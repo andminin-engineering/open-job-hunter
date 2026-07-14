@@ -12,7 +12,7 @@
     "dev:watch": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "tsc && node build/index.js",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "keywords": [
     "mcp",
