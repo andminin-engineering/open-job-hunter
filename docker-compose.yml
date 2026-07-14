@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mcp-backend:
+    image: node:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./src/data:/app/src/data
+    ports:
+      - 3000:3000
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - SCHEDULER_ENABLED=true
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  mcp-dashboard:
+    image: nginx:alpine
+    volumes:
+      - ./dashboard_mcp.html:/usr/share/nginx/html/index.html
+    ports:
+      - 8080:80
+    depends_on:
+      - mcp-backend

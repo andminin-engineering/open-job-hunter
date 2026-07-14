@@ -1,0 +1,25 @@
+# Dependencies & build
+node_modules/
+build/
+dist/
+
+# Secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Personal profile & local pipeline data (keep the .example files only)
+config/profile.json
+config/scheduler.json
+src/data/db.json
+src/data/*.backup*
+src/data/*.tmp*
+data/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.swp
+*~

@@ -1,0 +1,49 @@
+{
+  "name": "open-job-hunter",
+  "version": "1.0.0",
+  "description": "An open-source MCP server that discovers and AI-evaluates job offers against YOUR configurable profile — 100% local, private, and self-hosted.",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "open-job-hunter": "build/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "dev:watch": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "tsc && node build/index.js",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "job-search",
+    "job-hunter",
+    "ollama",
+    "llm",
+    "ai-agent",
+    "career",
+    "self-hosted"
+  ],
+  "author": "Andrea Minín",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andminin-engineering/open-job-hunter.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "nodemailer": "^9.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/nodemailer": "^8.0.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
+  }
+}

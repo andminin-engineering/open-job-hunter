@@ -1,0 +1,29 @@
+{
+  "fullName": "Your Name",
+  "headline": "Senior Backend Engineer / Solution Architect",
+  "seniorityYears": 10,
+  "summary": "Senior engineer with deep experience in high-availability transactional backends. Replace this with a 2-3 sentence pitch describing who you are, your domain (fintech, e-commerce, gaming, etc.) and the kind of problems you solve best.",
+  "coreCompetencies": {
+    "backend": ["Java (Spring Boot)", "Node.js (NestJS, TypeScript)"],
+    "architecture": ["Distributed systems", "Domain-Driven Design", "Hexagonal architecture", "Resilience patterns (Circuit Breaker, Saga, CQRS)"],
+    "cloud": ["AWS (ECS, RDS)", "Docker", "Kubernetes", "Terraform (IaC)"],
+    "quality": ["CI/CD pipelines", "SonarQube", "OWASP", "DORA metrics"],
+    "observability": ["OpenTelemetry", "Prometheus", "Grafana"]
+  },
+  "portfolioUrl": "https://github.com/your-handle",
+  "salaryTargetUsd": 3000,
+  "locations": ["Remote", "Americas"],
+  "languages": [
+    { "language": "Spanish", "level": "Native" },
+    { "language": "English", "level": "B2 (Professional working)" }
+  ],
+  "search": {
+    "keywords": "software architect OR backend engineer OR delivery lead OR senior",
+    "minScoreToApply": 70,
+    "boards": {
+      "remotive": { "search": "backend engineer senior", "limit": 10 },
+      "greenhouse": ["stripe", "datadog", "figma"],
+      "lever": ["lever"]
+    }
+  }
+}
