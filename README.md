@@ -47,6 +47,8 @@ Because evaluation happens on a local model (Ollama), **your profile and your se
                         └──────────────────┘
 ```
 
+The complete engineering case study is documented in [Architecture and decisions](./docs/architecture/README.md), including system diagrams, quality attributes, Architecture Decision Records (ADRs), threat boundaries and the AI-assisted delivery model.
+
 ## Quickstart
 
 ### Windows desktop app
