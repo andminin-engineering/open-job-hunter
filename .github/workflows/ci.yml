@@ -28,3 +28,5 @@ jobs:
       - run: npm test
       - run: npm audit --audit-level=high
       - run: npm run test:runtime
+      - name: Build hardened container image
+        run: docker build --tag open-job-hunter:ci .

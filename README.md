@@ -14,7 +14,11 @@ No cloud, no data leaving your machine, no vendor lock-in. You describe yourself
 
 </div>
 
-Code signing provided by SignPath Foundation. Learn more at [signpath.org](https://signpath.org/).
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+
+Every signing request requires manual approval and must originate from the repository's verifiable release workflow. See the complete [Code signing policy](./CODE_SIGNING_POLICY.md), [Privacy policy](./PRIVACY.md) and [Security policy](./SECURITY.md).
 
 ---
 
@@ -61,6 +65,8 @@ Download the latest installer or portable build from [GitHub Releases](https://g
 > Windows SmartScreen may warn about the first unsigned community release. Verify the published SHA-256 checksum before running it. Code signing is planned for a future release.
 
 Release integrity evidence includes SHA-256 manifests, a CycloneDX SBOM, Microsoft Defender scanning and GitHub/Sigstore attestations. See the [security policy](./SECURITY.md) for verification commands.
+
+To uninstall the installed edition, open **Windows Settings → Apps → Installed apps**, select **Open Job Hunter**, and choose **Uninstall**. The portable edition can be removed by closing it and deleting its executable. User-created profile and pipeline data are intentionally retained in the Windows user-data directory; see the [Privacy policy](./PRIVACY.md) for their location and deletion instructions.
 
 ### Developer / MCP installation
 
@@ -154,6 +160,8 @@ Point any MCP client at the built server. Example for Claude Desktop / Claude Co
 ## Privacy
 
 The LLM evaluation runs against a **local** Ollama instance — your profile, the offers you evaluate, and your pipeline stay on your machine. The only outbound calls are to the public job-board APIs you explicitly query, and (optionally) your own SMTP server for digests.
+
+For the complete inventory of stored data, network interactions, retention and deletion instructions, read the [Privacy policy](./PRIVACY.md).
 
 ## Roadmap
 

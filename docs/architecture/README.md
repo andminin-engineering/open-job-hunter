@@ -117,6 +117,8 @@ The release gate combines several kinds of evidence:
 
 The governing principle is that an LLM opinion is not executable evidence. Review complements deterministic tests; it does not replace them.
 
+Official releases additionally follow the repository's [Code signing policy](../../CODE_SIGNING_POLICY.md), [Privacy policy](../../PRIVACY.md) and [third-party component inventory](../../THIRD_PARTY_NOTICES.md).
+
 ## Delivery ownership
 
 Product direction, release authorization and acceptance belong to the human owner. LLM agents contribute implementation, architectural challenge, test construction and review under explicit provider separation. This is deliberately described as **AI-assisted engineering with human accountability**: it demonstrates orchestration skill without misrepresenting authorship or delegating responsibility to a model.
