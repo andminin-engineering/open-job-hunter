@@ -14,6 +14,8 @@ No cloud, no data leaving your machine, no vendor lock-in. You describe yourself
 
 </div>
 
+Code signing provided by SignPath Foundation. Learn more at [signpath.org](https://signpath.org/).
+
 ---
 
 ## Why
