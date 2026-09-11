@@ -15,7 +15,7 @@
     "start:mcp": "node build/bin/mcp.js",
     "start:all": "node build/bin/all.js",
     "desktop": "npm run build && electron .",
-    "dist:win": "npm run build && electron-builder --win nsis portable",
+    "dist:win": "npm run build && electron-builder --win nsis portable --publish never",
     "test": "vitest run --passWithNoTests",
     "test:runtime": "npm run build && node scripts/verify-runtime.mjs"
   },
