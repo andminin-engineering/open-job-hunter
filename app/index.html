@@ -124,13 +124,13 @@
       <p class="sub">Pegá el aviso y el asistente te dice qué tan compatible sos y si conviene postular.</p>
       <form id="addForm">
         <div class="grid two-col">
-          <div class="field"><label>Empresa</label><input id="fCompany" placeholder="Ej: Mercado Libre" /></div>
-          <div class="field"><label>¿Dónde la viste?</label><input id="fSource" placeholder="LinkedIn, correo, un amigo…" value="LinkedIn" /></div>
-          <div class="field"><label>Link del aviso <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="fUrl" type="url" placeholder="https://…" /></div>
-          <div class="field"><label>Sueldo publicado <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="fSalary" placeholder="Ej: USD 3.000/mes" /></div>
+          <div class="field"><label for="fCompany">Empresa</label><input id="fCompany" placeholder="Ej: Mercado Libre" /></div>
+          <div class="field"><label for="fSource">¿Dónde la viste?</label><input id="fSource" placeholder="LinkedIn, correo, un amigo…" value="LinkedIn" /></div>
+          <div class="field"><label for="fUrl">Link del aviso <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="fUrl" type="url" placeholder="https://…" /></div>
+          <div class="field"><label for="fSalary">Sueldo publicado <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="fSalary" placeholder="Ej: USD 3.000/mes" /></div>
         </div>
         <div class="field">
-          <label>Texto del aviso</label>
+          <label for="fDesc">Texto del aviso</label>
           <textarea id="fDesc" required placeholder="Copiá y pegá acá la descripción completa del puesto…"></textarea>
           <div class="hint">Cuanto más completo el texto, mejor será la evaluación.</div>
         </div>
@@ -147,7 +147,7 @@
       <h2>Buscar ofertas nuevas</h2>
       <p class="sub">El asistente busca en portales de empleo remoto y evalúa automáticamente cada oferta para vos.</p>
       <div class="field">
-        <label>¿Qué tipo de puesto buscás?</label>
+        <label for="qSearch">¿Qué tipo de puesto buscás?</label>
         <input id="qSearch" placeholder="Ej: software architect, backend java, delivery lead" value="software architect" />
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
