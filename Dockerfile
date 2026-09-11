@@ -1,5 +1,5 @@
 # Etapa 1: Compilación del TypeScript
-FROM node:22-alpine AS build-stage
+FROM node:26-alpine AS build-stage
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY ./src ./src
 RUN ./node_modules/.bin/tsc
 
 # Etapa 2: Entorno de ejecución liviano de producción
-FROM node:22-alpine AS runtime-stage
+FROM node:26-alpine AS runtime-stage
 
 WORKDIR /app
 
