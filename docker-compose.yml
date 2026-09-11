@@ -1,13 +1,11 @@
-version: '3.8'
-
 services:
   mcp-backend:
-    image: node:alpine
+    image: open-job-hunter:local
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./src/data:/app/src/data
+      - ./src/data:/app/data
     ports:
       - 3000:3000
     env_file:

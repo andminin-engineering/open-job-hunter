@@ -1,5 +1,5 @@
 # Etapa 1: Compilación del TypeScript
-FROM node:20-alpine AS build-stage
+FROM node:22-alpine AS build-stage
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY ./src ./src
 RUN ./node_modules/.bin/tsc
 
 # Etapa 2: Entorno de ejecución liviano de producción
-FROM node:20-alpine AS runtime-stage
+FROM node:22-alpine AS runtime-stage
 
 WORKDIR /app
 
@@ -26,8 +26,7 @@ RUN npm ci --omit=dev --ignore-scripts
 
 # Traemos la carpeta compilada 'build' desde la etapa anterior
 COPY --from=build-stage /app/build ./build
-COPY --from=build-stage /app/src/data/scheduler-config.json ./src/data/scheduler-config.json
-COPY config ./config
+COPY config/profile.example.json ./config/profile.json
 COPY app ./app
 
 RUN mkdir -p /app/data && chown -R node:node /app/data /app/config
@@ -36,6 +35,7 @@ ENV JOB_HUNTER_MODE=http
 ENV HOST=0.0.0.0
 ENV PROFILE_PATH=/app/config/profile.json
 ENV JOB_HUNTER_DATA_DIR=/app/data
+ENV SCHEDULER_CONFIG_PATH=/app/data/scheduler-config.json
 
 EXPOSE 3000
 
