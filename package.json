@@ -30,7 +30,15 @@
     "career",
     "self-hosted"
   ],
-  "author": "Andrea Minín",
+  "author": {
+    "name": "Andrea Minín",
+    "email": "andminin.biz@gmail.com",
+    "url": "https://github.com/andminin-engineering"
+  },
+  "homepage": "https://andminin-engineering.github.io/open-job-hunter/",
+  "bugs": {
+    "url": "https://github.com/andminin-engineering/open-job-hunter/issues"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -47,18 +55,21 @@
   "devDependencies": {
     "@types/node": "^20.19.43",
     "@types/nodemailer": "^8.0.1",
-    "tsx": "^4.22.4",
-    "typescript": "^5.9.3",
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.2",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3",
     "vitest": "^4.1.11"
   },
   "build": {
     "appId": "com.andminin.openjobhunter",
     "productName": "Open Job Hunter",
+    "copyright": "Copyright © 2026 Andrea Minín",
     "asar": true,
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build-resources"
     },
     "files": [
       "desktop/**/*",
@@ -68,6 +79,9 @@
       "package.json"
     ],
     "win": {
+      "icon": "build-resources/icon.ico",
+      "executableName": "OpenJobHunter",
+      "legalTrademarks": "Open Job Hunter",
       "target": [
         "nsis",
         "portable"
@@ -78,6 +92,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
+      "shortcutName": "Open Job Hunter",
+      "uninstallDisplayName": "Open Job Hunter",
       "artifactName": "Open-Job-Hunter-Setup-${version}-${arch}.${ext}"
     },
     "portable": {

@@ -101,6 +101,7 @@ An old timestamp alone is insufficient to break a lock. A slow but live writer m
 - [ADR-003: Safe JSON persistence across processes](./adr/003-safe-json-persistence.md)
 - [ADR-004: One core, multiple runtime adapters](./adr/004-runtime-adapters-and-desktop-distribution.md)
 - [ADR-005: AI-assisted delivery governance](./adr/005-ai-assisted-delivery-governance.md)
+- [ADR-006: Verifiable release supply chain](./adr/006-verifiable-release-supply-chain.md)
 
 ## Verification strategy
 

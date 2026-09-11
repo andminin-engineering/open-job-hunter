@@ -1,0 +1,111 @@
+name: Verified Windows release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Configure Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run release quality gates
+        shell: pwsh
+        run: |
+          npm run build
+          npm test
+          npm audit --audit-level=high
+          npm run test:runtime
+
+      - name: Build Windows distributions
+        run: npm run dist:win
+
+      - name: Scan distributions with Microsoft Defender
+        shell: pwsh
+        run: |
+          $status = Get-MpComputerStatus
+          if (-not $status.AntivirusEnabled) {
+            throw "Microsoft Defender Antivirus is not enabled on this runner"
+          }
+          Start-MpScan -ScanType CustomScan -ScanPath (Resolve-Path "release")
+          $threats = @(Get-MpThreatDetection | Where-Object {
+            $_.Resources -match [regex]::Escape((Resolve-Path "release").Path)
+          })
+          if ($threats.Count -gt 0) {
+            $threats | Format-List | Out-String | Write-Error
+            throw "Microsoft Defender reported a threat in the release directory"
+          }
+
+      - name: Generate CycloneDX SBOM and SHA-256 manifest
+        shell: pwsh
+        run: |
+          npm sbom --sbom-format cyclonedx | Out-File -Encoding utf8 "release/open-job-hunter-sbom.cdx.json"
+          Get-ChildItem "release/*.exe" | Sort-Object Name | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          } | Out-File -Encoding ascii "release/SHA256SUMS.txt"
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: "release/*.exe"
+
+      - name: Attest software bill of materials
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: "release/*.exe"
+          sbom-path: "release/open-job-hunter-sbom.cdx.json"
+
+      - name: Upload verified workflow artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: open-job-hunter-windows-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            release/Open-Job-Hunter-Setup-*.exe
+            release/Open-Job-Hunter-Portable-*.exe
+            release/SHA256SUMS.txt
+            release/open-job-hunter-sbom.cdx.json
+
+      - name: Publish tagged GitHub release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release view "${{ github.ref_name }}" 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "${{ github.ref_name }}" --verify-tag --generate-notes --title "Open Job Hunter ${{ github.ref_name }}"
+          }
+          $assetPaths = @(
+            (Get-ChildItem "release/Open-Job-Hunter-Setup-*.exe").FullName
+            (Get-ChildItem "release/Open-Job-Hunter-Portable-*.exe").FullName
+            (Resolve-Path "release/SHA256SUMS.txt").Path
+            (Resolve-Path "release/open-job-hunter-sbom.cdx.json").Path
+          )
+          gh release upload "${{ github.ref_name }}" $assetPaths --clobber

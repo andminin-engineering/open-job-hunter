@@ -10,6 +10,7 @@ No cloud, no data leaving your machine, no vendor lock-in. You describe yourself
 [![MCP](https://img.shields.io/badge/Model_Context_Protocol-server-blue)](https://modelcontextprotocol.io)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org)
+[![CI](https://github.com/andminin-engineering/open-job-hunter/actions/workflows/ci.yml/badge.svg)](https://github.com/andminin-engineering/open-job-hunter/actions/workflows/ci.yml)
 
 </div>
 
@@ -56,6 +57,8 @@ The complete engineering case study is documented in [Architecture and decisions
 Download the latest installer or portable build from [GitHub Releases](https://github.com/andminin-engineering/open-job-hunter/releases/latest). No Node.js installation is required. The desktop app stores your profile and pipeline under your Windows user data directory.
 
 > Windows SmartScreen may warn about the first unsigned community release. Verify the published SHA-256 checksum before running it. Code signing is planned for a future release.
+
+Release integrity evidence includes SHA-256 manifests, a CycloneDX SBOM, Microsoft Defender scanning and GitHub/Sigstore attestations. See the [security policy](./SECURITY.md) for verification commands.
 
 ### Developer / MCP installation
 
