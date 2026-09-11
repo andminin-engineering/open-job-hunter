@@ -2,8 +2,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { createServer } from "node:http";
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 import { buildEvaluatorPrompt } from "./prompts.js";
@@ -17,10 +17,16 @@ import {
   obtenerOfertaPorId,
   type EstadoPostulacion,
 } from "./database.js";
+import { DB_PATH, PROJECT_ROOT, SCHEDULER_CONFIG_PATH } from "./paths.js";
 
 const HTTP_PORT = Number(process.env.PORT ?? 3000);
+const HTTP_HOST = process.env.HOST ?? "127.0.0.1";
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
-const SCHEDULER_CONFIG_PATH = process.env.SCHEDULER_CONFIG_PATH ?? join(process.cwd(), "src", "data", "scheduler-config.json");
+const RUNTIME_MODE = process.env.JOB_HUNTER_MODE ?? "mcp";
+const MCP_ENABLED = RUNTIME_MODE === "mcp" || RUNTIME_MODE === "all";
+const HTTP_ENABLED = RUNTIME_MODE === "http" || RUNTIME_MODE === "all";
+
+if (!MCP_ENABLED && !HTTP_ENABLED) throw new Error(`Invalid JOB_HUNTER_MODE: ${RUNTIME_MODE}. Use mcp, http or all.`);
 
 const EstadoPostulacionSchema = z.enum([
   "nueva",
@@ -175,12 +181,14 @@ async function loadSchedulerConfig(): Promise<SchedulerConfig> {
         ...(parsed.core ?? {}),
       },
     });
-  } catch {
-    return fallback;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return fallback;
+    throw new Error(`Could not read scheduler configuration at ${SCHEDULER_CONFIG_PATH}`, { cause: error });
   }
 }
 
 async function saveSchedulerConfig(config: SchedulerConfig): Promise<void> {
+  await mkdir(dirname(SCHEDULER_CONFIG_PATH), { recursive: true });
   await writeFile(SCHEDULER_CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
 }
 
@@ -253,12 +261,13 @@ function jsonResponse(payload: unknown) {
 }
 
 function writeHttpJson(res: any, statusCode: number, payload: unknown) {
-  res.writeHead(statusCode, {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-  });
+  };
+  if (process.env.HTTP_ALLOWED_ORIGIN) headers["Access-Control-Allow-Origin"] = process.env.HTTP_ALLOWED_ORIGIN;
+  res.writeHead(statusCode, headers);
   res.end(JSON.stringify(payload));
 }
 
@@ -1302,9 +1311,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error("MCP Job Hunter + Ollama Server corriendo exitosamente en Stdio!");
+let mcpTransport: StdioServerTransport | undefined;
+if (MCP_ENABLED) {
+  mcpTransport = new StdioServerTransport();
+  await server.connect(mcpTransport);
+  console.error(`[open-job-hunter] MCP stdio active. Database: ${DB_PATH}`);
+}
 
 const httpServer = createServer(async (req, res) => {
   try {
@@ -1321,8 +1333,15 @@ const httpServer = createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     const path = url.pathname;
 
+    if (req.method === "GET" && path === "/") {
+      const dashboard = await readFile(`${PROJECT_ROOT}/app/index.html`, "utf-8");
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      res.end(dashboard);
+      return;
+    }
+
     if (req.method === "GET" && path === "/health") {
-      writeHttpJson(res, 200, { ok: true, service: "mcp-job-hunter", mode: "http+mcp-stdio" });
+      writeHttpJson(res, 200, { ok: true, service: "open-job-hunter", mode: RUNTIME_MODE });
       return;
     }
 
@@ -1742,8 +1761,13 @@ const httpServer = createServer(async (req, res) => {
   }
 });
 
-httpServer.listen(HTTP_PORT, () => {
-  console.error(`HTTP bridge activo en puerto ${HTTP_PORT}`);
-});
-
-startSchedulerLoop();
+if (HTTP_ENABLED) {
+  httpServer.on("error", async (error) => {
+    console.error(`[open-job-hunter] Could not bind HTTP port ${HTTP_PORT}:`, error);
+    try { await mcpTransport?.close(); } finally { process.exit(1); }
+  });
+  httpServer.listen(HTTP_PORT, HTTP_HOST, () => {
+    console.error(`[open-job-hunter] UI active at http://${HTTP_HOST}:${HTTP_PORT}. Database: ${DB_PATH}`);
+    startSchedulerLoop();
+  });
+}

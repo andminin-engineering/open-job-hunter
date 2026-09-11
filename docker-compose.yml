@@ -22,11 +22,3 @@ services:
       - SMTP_FROM=${SMTP_FROM}
     extra_hosts:
       - "host.docker.internal:host-gateway"
-  mcp-dashboard:
-    image: nginx:alpine
-    volumes:
-      - ./dashboard_mcp.html:/usr/share/nginx/html/index.html
-    ports:
-      - 8080:80
-    depends_on:
-      - mcp-backend

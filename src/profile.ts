@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { z } from "zod";
+import { PROFILE_EXAMPLE_PATH, PROFILE_PATH } from "./paths.js";
 
 /**
  * Candidate profile schema.
@@ -42,9 +42,8 @@ export const ProfileSchema = z.object({
 export type Profile = z.infer<typeof ProfileSchema>;
 
 const DEFAULT_PROFILE_PATHS = [
-  process.env.PROFILE_PATH,
-  join(process.cwd(), "config", "profile.json"),
-  join(process.cwd(), "config", "profile.example.json"),
+  PROFILE_PATH,
+  PROFILE_EXAMPLE_PATH,
 ].filter(Boolean) as string[];
 
 let cachedProfile: Profile | null = null;

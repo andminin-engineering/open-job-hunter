@@ -1,18 +1,23 @@
 {
   "name": "open-job-hunter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An open-source MCP server that discovers and AI-evaluates job offers against YOUR configurable profile — 100% local, private, and self-hosted.",
   "type": "module",
-  "main": "build/index.js",
+  "main": "desktop/main.cjs",
   "bin": {
-    "open-job-hunter": "build/index.js"
+    "open-job-hunter": "build/bin/mcp.js"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "dev:watch": "tsx watch src/index.ts",
+    "dev": "tsx src/bin/http.ts",
+    "dev:watch": "tsx watch src/bin/http.ts",
     "build": "tsc",
-    "start": "tsc && node build/index.js",
-    "test": "vitest run --passWithNoTests"
+    "start": "npm run build && node build/bin/http.js",
+    "start:mcp": "node build/bin/mcp.js",
+    "start:all": "node build/bin/all.js",
+    "desktop": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win nsis portable",
+    "test": "vitest run --passWithNoTests",
+    "test:runtime": "npm run build && node scripts/verify-runtime.mjs"
   },
   "keywords": [
     "mcp",
@@ -44,6 +49,39 @@
     "@types/nodemailer": "^8.0.1",
     "tsx": "^4.22.4",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.9"
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "vitest": "^4.1.11"
+  },
+  "build": {
+    "appId": "com.andminin.openjobhunter",
+    "productName": "Open Job Hunter",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "build/**/*",
+      "app/**/*",
+      "config/profile.example.json",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "Open-Job-Hunter-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Open-Job-Hunter-Portable-${version}-${arch}.${ext}"
+    }
   }
 }

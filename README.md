@@ -49,6 +49,14 @@ Because evaluation happens on a local model (Ollama), **your profile and your se
 
 ## Quickstart
 
+### Windows desktop app
+
+Download the latest installer or portable build from [GitHub Releases](https://github.com/andminin-engineering/open-job-hunter/releases/latest). No Node.js installation is required. The desktop app stores your profile and pipeline under your Windows user data directory.
+
+> Windows SmartScreen may warn about the first unsigned community release. Verify the published SHA-256 checksum before running it. Code signing is planned for a future release.
+
+### Developer / MCP installation
+
 Requires **Node ≥ 20** and a running **[Ollama](https://ollama.com)** instance.
 
 ```bash
@@ -67,7 +75,7 @@ cp config/profile.example.json config/profile.json
 # 4. (optional) configure environment
 cp .env.example .env
 
-# 5. Build & run
+# 5. Build & run the web interface
 npm start
 ```
 
@@ -108,7 +116,7 @@ Point any MCP client at the built server. Example for Claude Desktop / Claude Co
   "mcpServers": {
     "open-job-hunter": {
       "command": "node",
-      "args": ["/absolute/path/to/open-job-hunter/build/index.js"]
+      "args": ["/absolute/path/to/open-job-hunter/build/bin/mcp.js"]
     }
   }
 }
@@ -144,7 +152,7 @@ The LLM evaluation runs against a **local** Ollama instance — your profile, th
 
 - Additional job-board connectors (Ashby, Workable, LinkedIn export).
 - Pluggable LLM backends beyond Ollama.
-- Web dashboard shipped with the server.
+- Signed Windows builds and automatic updates.
 - CV/offer gap analysis.
 
 ## Contributing

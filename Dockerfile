@@ -27,8 +27,14 @@ RUN npm ci --only=production
 # Traemos la carpeta compilada 'build' desde la etapa anterior
 COPY --from=build-stage /app/build ./build
 COPY --from=build-stage /app/src/data/scheduler-config.json ./src/data/scheduler-config.json
+COPY config ./config
+COPY app ./app
+
+ENV JOB_HUNTER_MODE=http
+ENV HOST=0.0.0.0
+ENV PROFILE_PATH=/app/config/profile.json
 
 EXPOSE 3000
 
 # Iniciamos el archivo JS resultante directamente
-CMD ["node", "build/index.js"]
+CMD ["node", "build/bin/http.js"]

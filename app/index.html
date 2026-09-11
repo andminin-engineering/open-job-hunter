@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JobHunter — Tu copiloto de búsqueda laboral</title>
+<meta name="description" content="Organiza tu búsqueda de trabajo: descubre vacantes, evalúa tu compatibilidad y sigue cada postulación hasta la oferta." />
+<style>
+  :root {
+    --bg: #f7f8fb; --card: #ffffff; --ink: #1a2233; --muted: #64708a;
+    --brand: #4f46e5; --brand-soft: #eef0ff; --ok: #16a34a; --warn: #d97706; --bad: #dc2626;
+    --border: #e5e8f0; --radius: 14px; --shadow: 0 1px 3px rgba(20,30,60,.08), 0 8px 24px rgba(20,30,60,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+  a { color: var(--brand); }
+  header.top {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; }
+  .logo-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 1.1rem; }
+  .conn { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); }
+  nav.tabs { display: flex; gap: 4px; background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; overflow-x: auto; }
+  nav.tabs button {
+    border: 0; background: none; padding: 12px 16px; font-size: .95rem; color: var(--muted); cursor: pointer;
+    border-bottom: 3px solid transparent; white-space: nowrap;
+  }
+  nav.tabs button.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+  .grid { display: grid; gap: 16px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 20px; }
+  .kpi .num { font-size: 2rem; font-weight: 700; }
+  .kpi .lbl { color: var(--muted); font-size: .85rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 6px; } h2 { font-size: 1.15rem; margin: 0 0 12px; }
+  p.sub { color: var(--muted); margin: 0 0 18px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 10px; cursor: pointer;
+    background: var(--brand); color: #fff; padding: 10px 18px; font-size: .95rem; font-weight: 600;
+  }
+  .btn.secondary { background: var(--brand-soft); color: var(--brand); }
+  .btn.ghost { background: none; border: 1px solid var(--border); color: var(--ink); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  input, textarea, select {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: .95rem;
+    font-family: inherit; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 120px; resize: vertical; }
+  label { font-size: .85rem; font-weight: 600; display: block; margin: 0 0 6px; }
+  .field { margin-bottom: 14px; }
+  .hint { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+  /* Onboarding hero */
+  .hero { text-align: center; padding: 48px 24px; }
+  .hero h1 { font-size: 2rem; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 28px auto 0; max-width: 860px; text-align: left; }
+  .step { position: relative; padding-top: 26px; }
+  .step .n {
+    position: absolute; top: -16px; left: 20px; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700;
+  }
+  /* Kanban */
+  .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; align-items: start; }
+  .col { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
+  .col h3 { margin: 4px 6px 10px; font-size: .9rem; color: var(--muted); display: flex; justify-content: space-between; }
+  .job {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+    font-size: .88rem; box-shadow: 0 1px 2px rgba(20,30,60,.06);
+  }
+  .job .co { font-weight: 700; }
+  .job .meta { color: var(--muted); font-size: .78rem; margin: 3px 0; }
+  .score { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: .75rem; font-weight: 700; }
+  .score.hi { background: #dcfce7; color: #15803d; } .score.mid { background: #fef3c7; color: #b45309; } .score.lo { background: #fee2e2; color: #b91c1c; }
+  .job .actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .job .actions button { font-size: .75rem; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
+  .job .actions button:hover { background: var(--brand-soft); }
+  .empty { color: var(--muted); font-size: .82rem; text-align: center; padding: 14px 6px; }
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
+    border-radius: 10px; padding: 12px 20px; font-size: .9rem; box-shadow: var(--shadow); opacity: 0; transition: opacity .25s; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+  .result-box { background: var(--brand-soft); border-radius: 10px; padding: 14px 16px; margin-top: 14px; font-size: .9rem; display: none; }
+  .two-col { grid-template-columns: 1fr 1fr; } @media (max-width: 760px){ .two-col { grid-template-columns: 1fr; } }
+  .discovery-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; font-size: .88rem; }
+  section.view { display: none; } section.view.active { display: block; }
+  .banner-offline { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: var(--radius); padding: 14px 18px; margin-bottom: 18px; font-size: .9rem; display: none; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo"><span class="logo-mark">🎯</span> JobHunter <span style="font-weight:400;color:var(--muted);font-size:.85rem">tu copiloto de búsqueda laboral</span></div>
+  <div class="conn"><span class="dot" id="connDot"></span><span id="connText">Buscando tu asistente local…</span></div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-view="inicio" class="active">📋 Mis postulaciones</button>
+  <button data-view="agregar">➕ Agregar vacante</button>
+  <button data-view="buscar">🔍 Buscar ofertas</button>
+  <button data-view="ayuda">💡 Primeros pasos</button>
+</nav>
+
+<main>
+  <div class="banner-offline" id="offlineBanner">
+    <strong>Tu asistente local no está encendido.</strong> Abrí la aplicación JobHunter en tu computadora (o ejecutá <code>npm start</code> en la carpeta del proyecto) y esta página se conectará sola. Tus datos nunca salen de tu computadora.
+  </div>
+
+  <!-- VISTA: PIPELINE -->
+  <section class="view active" id="view-inicio">
+    <h1>Mis postulaciones</h1>
+    <p class="sub">Cada tarjeta es una oportunidad. Movelas de columna a medida que avanza tu proceso.</p>
+    <div class="grid kpis" id="kpis"></div>
+    <div class="board" id="board"></div>
+  </section>
+
+  <!-- VISTA: AGREGAR -->
+  <section class="view" id="view-agregar">
+    <div class="card" style="max-width:760px;margin:0 auto">
+      <h2>Agregar una vacante que encontraste</h2>
+      <p class="sub">Pegá el aviso y el asistente te dice qué tan compatible sos y si conviene postular.</p>
+      <form id="addForm">
+        <div class="grid two-col">
+          <div class="field"><label>Empresa</label><input id="fCompany" placeholder="Ej: Mercado Libre" /></div>
+          <div class="field"><label>¿Dónde la viste?</label><input id="fSource" placeholder="LinkedIn, correo, un amigo…" value="LinkedIn" /></div>
+          <div class="field"><label>Link del aviso <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="fUrl" type="url" placeholder="https://…" /></div>
+          <div class="field"><label>Sueldo publicado <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="fSalary" placeholder="Ej: USD 3.000/mes" /></div>
+        </div>
+        <div class="field">
+          <label>Texto del aviso</label>
+          <textarea id="fDesc" required placeholder="Copiá y pegá acá la descripción completa del puesto…"></textarea>
+          <div class="hint">Cuanto más completo el texto, mejor será la evaluación.</div>
+        </div>
+        <button class="btn" type="submit" id="addBtn">Evaluar mi compatibilidad</button>
+        <span class="hint" id="addStatus" style="margin-left:10px"></span>
+      </form>
+      <div class="result-box" id="addResult"></div>
+    </div>
+  </section>
+
+  <!-- VISTA: BUSCAR -->
+  <section class="view" id="view-buscar">
+    <div class="card" style="max-width:760px;margin:0 auto">
+      <h2>Buscar ofertas nuevas</h2>
+      <p class="sub">El asistente busca en portales de empleo remoto y evalúa automáticamente cada oferta para vos.</p>
+      <div class="field">
+        <label>¿Qué tipo de puesto buscás?</label>
+        <input id="qSearch" placeholder="Ej: software architect, backend java, delivery lead" value="software architect" />
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn secondary" id="qPreview">Ver ofertas</button>
+        <button class="btn" id="qImport">Buscar, evaluar y guardar</button>
+      </div>
+      <p class="hint" id="qStatus" style="margin-top:10px"></p>
+      <div id="qResults" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- VISTA: AYUDA -->
+  <section class="view" id="view-ayuda">
+    <div class="hero card">
+      <h1>Conseguí tu próximo trabajo, con método.</h1>
+      <p class="sub" style="max-width:620px;margin:8px auto 0">JobHunter organiza tu búsqueda: encuentra vacantes, evalúa tu compatibilidad con inteligencia artificial local (tus datos no salen de tu computadora) y te acompaña postulación por postulación hasta la oferta.</p>
+      <div class="steps">
+        <div class="step card"><span class="n">1</span><strong>Encendé tu asistente</strong><p class="hint">Abrí la app JobHunter en tu computadora. El punto verde arriba a la derecha te confirma que está funcionando.</p></div>
+        <div class="step card"><span class="n">2</span><strong>Cargá o buscá vacantes</strong><p class="hint">Pegá un aviso que te interese o dejá que el asistente busque por vos en portales de empleo remoto.</p></div>
+        <div class="step card"><span class="n">3</span><strong>Seguí tu progreso</strong><p class="hint">Mové cada tarjeta según avances: postulada → entrevista → oferta. Las métricas te muestran cómo venís.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
+const API = LOCAL_HOSTS.has(location.hostname)
+  ? location.origin
+  : (localStorage.getItem('jobhunter_api') || 'http://localhost:3000');
+const ESTADOS = [
+  { key: 'evaluada',          label: '✅ Listas para postular' },
+  { key: 'postulada',         label: '📨 Postuladas' },
+  { key: 'feedback_recibido', label: '💬 Con respuesta' },
+  { key: 'entrevista',        label: '🗣️ En entrevista' },
+  { key: 'oferta',            label: '🏆 ¡Oferta!' },
+  { key: 'descartada',        label: '🗂️ Descartadas' },
+];
+const NEXT_ACTIONS = {
+  evaluada:          [['postulada', 'Ya postulé'], ['descartada', 'Descartar']],
+  postulada:         [['feedback_recibido', 'Me respondieron'], ['rechazada', 'Me rechazaron']],
+  feedback_recibido: [['entrevista', 'Tengo entrevista'], ['rechazada', 'Me rechazaron']],
+  entrevista:        [['oferta', '¡Recibí oferta!'], ['rechazada', 'No avanzó']],
+  oferta:            [],
+  descartada:        [['evaluada', 'Recuperar']],
+};
+
+const $ = (id) => document.getElementById(id);
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3200); }
+
+/* Tabs */
+document.querySelectorAll('#tabs button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('section.view').forEach(v => v.classList.remove('active'));
+  btn.classList.add('active');
+  $('view-' + btn.dataset.view).classList.add('active');
+}));
+
+/* Conexión */
+let online = false;
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(4000) });
+    online = r.ok;
+  } catch { online = false; }
+  $('connDot').className = 'dot ' + (online ? 'ok' : 'bad');
+  $('connText').textContent = online ? 'Asistente conectado' : 'Asistente apagado';
+  $('offlineBanner').style.display = online ? 'none' : 'block';
+  return online;
+}
+
+/* Pipeline */
+function scoreBadge(ev) {
+  if (!ev) return '';
+  const s = ev.match_score ?? 0;
+  const cls = s >= 75 ? 'hi' : s >= 55 ? 'mid' : 'lo';
+  return `<span class="score ${cls}">${s}% compatible</span>`;
+}
+function jobCard(item) {
+  const acts = (NEXT_ACTIONS[item.estado] || [])
+    .map(([estado, label]) => `<button onclick="moveJob('${item.id}','${estado}')">${label}</button>`).join('');
+  const link = item.jobUrl ? `<a href="${item.jobUrl}" target="_blank" rel="noopener">ver aviso ↗</a>` : '';
+  return `<div class="job">
+    <div class="co">${item.company || 'Empresa sin nombre'}</div>
+    <div class="meta">${item.sourcePlatform || ''} ${item.expectedSalaryRange ? '· ' + item.expectedSalaryRange : ''}</div>
+    <div>${scoreBadge(item.evaluacion)} ${link}</div>
+    <div class="actions">${acts}</div>
+  </div>`;
+}
+async function loadPipeline() {
+  if (!await checkHealth()) return;
+  try {
+    const [pipeRes, funnelRes] = await Promise.all([
+      fetch(API + '/api/pipeline?limit=200').then(r => r.json()),
+      fetch(API + '/api/metrics/funnel').then(r => r.json()),
+    ]);
+    const items = pipeRes.items || [];
+    const m = funnelRes.metrics || {};
+    $('kpis').innerHTML = `
+      <div class="card kpi"><div class="num">${items.length}</div><div class="lbl">Vacantes registradas</div></div>
+      <div class="card kpi"><div class="num">${m.postulacionesEnviadas ?? 0}</div><div class="lbl">Postulaciones enviadas</div></div>
+      <div class="card kpi"><div class="num">${m.feedbackRecibido ?? 0}</div><div class="lbl">Respuestas recibidas</div></div>
+      <div class="card kpi"><div class="num">${m.entrevistasConcretadas ?? 0}</div><div class="lbl">Entrevistas logradas</div></div>`;
+    $('board').innerHTML = ESTADOS.map(col => {
+      const colItems = items.filter(i => i.estado === col.key || (col.key === 'descartada' && i.estado === 'rechazada'));
+      return `<div class="col"><h3>${col.label}<span>${colItems.length}</span></h3>
+        ${colItems.length ? colItems.map(jobCard).join('') : '<div class="empty">Nada por aquí todavía</div>'}</div>`;
+    }).join('');
+  } catch (e) { toast('No pude cargar tus postulaciones: ' + e.message); }
+}
+window.moveJob = async function (id, estado) {
+  try {
+    const r = await fetch(`${API}/api/postulaciones/${encodeURIComponent(id)}/estado`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }),
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'no se pudo actualizar');
+    toast('¡Actualizado! 💪'); loadPipeline();
+  } catch (e) { toast('Error: ' + e.message); }
+};
+
+/* Agregar vacante */
+$('addForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (!online) { toast('Encendé primero tu asistente local.'); return; }
+  $('addBtn').disabled = true; $('addStatus').textContent = 'Analizando… esto puede tardar un minuto.';
+  try {
+    const payload = {
+      company: $('fCompany').value || undefined,
+      sourcePlatform: $('fSource').value || 'Otro',
+      expectedSalaryRange: $('fSalary').value || undefined,
+      jobUrl: $('fUrl').value || undefined,
+      jobDescription: $('fDesc').value,
+      persistResult: true,
+    };
+    const r = await fetch(API + '/api/evaluar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'La evaluación falló');
+    const e = data.evaluation;
+    const box = $('addResult');
+    box.style.display = 'block';
+    box.innerHTML = `<strong>${e.apply ? '👍 Vale la pena postular' : '🤔 No parece el mejor match'}</strong> — compatibilidad ${e.match_score}%.<br/>
+      ${e.strong_points_to_highlight?.length ? '<br/><strong>Tus puntos fuertes para este puesto:</strong><br/>· ' + e.strong_points_to_highlight.join('<br/>· ') : ''}
+      ${e.detected_risks?.length ? '<br/><br/><strong>A tener en cuenta:</strong><br/>· ' + e.detected_risks.join('<br/>· ') : ''}`;
+    $('addStatus').textContent = 'Guardada en tu tablero ✅'; $('addForm').reset(); loadPipeline();
+  } catch (e) { $('addStatus').textContent = ''; toast('Error: ' + e.message); }
+  finally { $('addBtn').disabled = false; }
+});
+
+/* Buscar ofertas */
+async function discovery(importar) {
+  if (!online) { toast('Encendé primero tu asistente local.'); return; }
+  const search = $('qSearch').value.trim() || 'software architect';
+  $('qStatus').textContent = importar ? 'Buscando y evaluando cada oferta… puede tardar varios minutos.' : 'Buscando ofertas…';
+  try {
+    if (importar) {
+      const r = await fetch(API + '/api/discovery/remotive/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ search, limit: 8 }) });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.error || 'falló la búsqueda');
+      $('qStatus').textContent = `Listo: ${data.processed} ofertas evaluadas y guardadas en tu tablero (${data.failed} fallidas).`;
+      loadPipeline();
+    } else {
+      const r = await fetch(`${API}/api/discovery/remotive?search=${encodeURIComponent(search)}&limit=10`);
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.error || 'falló la búsqueda');
+      $('qStatus').textContent = `${data.total} ofertas encontradas:`;
+      $('qResults').innerHTML = (data.items || []).map(j => `<div class="discovery-item">
+        <strong>${j.title}</strong> — ${j.company}<br/>
+        <span class="hint">${j.location || ''} ${j.salary ? '· ' + j.salary : ''}</span>
+        ${j.url ? `<br/><a href="${j.url}" target="_blank" rel="noopener">ver aviso ↗</a>` : ''}</div>`).join('');
+    }
+  } catch (e) { $('qStatus').textContent = ''; toast('Error: ' + e.message); }
+}
+$('qPreview').addEventListener('click', () => discovery(false));
+$('qImport').addEventListener('click', () => discovery(true));
+
+/* Init */
+checkHealth().then(ok => { if (ok) loadPipeline(); });
+setInterval(checkHealth, 15000);
+</script>
+</body>
+</html>

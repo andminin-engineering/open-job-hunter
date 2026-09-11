@@ -1,6 +1,8 @@
 # Dependencies & build
 node_modules/
 build/
+release/
+node_modules.stale-*/
 dist/
 
 # Secrets — NEVER commit
