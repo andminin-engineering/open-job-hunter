@@ -53,14 +53,14 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^20.19.43",
+    "@types/node": "^26.5.1",
     "@types/nodemailer": "^8.0.1",
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
     "png-to-ico": "^3.0.2",
     "tsx": "^4.22.4",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   },
   "build": {
     "appId": "com.andminin.openjobhunter",
