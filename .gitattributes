@@ -1,0 +1,2 @@
+# agent-artifact-guard keeps LF endings so it runs in CI and in the hook
+.github/scripts/agent-artifact-guard.sh text eol=lf

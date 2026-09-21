@@ -1,0 +1,21 @@
+# Blocks agent operating artifacts (handoff logs, transcripts, agent-local
+# state) from entering the repository. The local pre-commit hook runs the
+# same script in --staged mode.
+name: agent-artifact-guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: agent-artifact-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check tracked files
+        run: sh .github/scripts/agent-artifact-guard.sh --tracked
