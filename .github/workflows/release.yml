@@ -40,6 +40,7 @@ jobs:
           npm test
           npm audit --audit-level=high
           npm run test:runtime
+          npm run doctor
 
       - name: Build Windows distributions
         run: npm run dist:win
@@ -100,7 +101,11 @@ jobs:
         run: |
           gh release view "${{ github.ref_name }}" 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create "${{ github.ref_name }}" --verify-tag --generate-notes --title "Open Job Hunter ${{ github.ref_name }}"
+            if ("${{ github.ref_name }}" -match "-") {
+              gh release create "${{ github.ref_name }}" --verify-tag --generate-notes --prerelease --title "Open Job Hunter ${{ github.ref_name }}"
+            } else {
+              gh release create "${{ github.ref_name }}" --verify-tag --generate-notes --title "Open Job Hunter ${{ github.ref_name }}"
+            }
           }
           $assetPaths = @(
             (Get-ChildItem "release/Open-Job-Hunter-Setup-*.exe").FullName

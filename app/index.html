@@ -261,6 +261,7 @@ $('goProfile').addEventListener('click', (ev) => { ev.preventDefault(); showView
 let online = false;
 let aiReady = false;
 let aiHint = '';
+let profileReady = false;
 async function checkHealth() {
   let health = null;
   try {
@@ -271,6 +272,7 @@ async function checkHealth() {
   const ai = health && health.ollama;
   aiReady = Boolean(ai && ai.reachable && ai.modelAvailable);
   aiHint = ai && ai.hint ? ai.hint : '';
+  profileReady = Boolean(health && health.profileConfigured);
   $('connDot').className = 'dot ' + (!online ? 'bad' : aiReady ? 'ok' : 'warn');
   $('connText').textContent = !online ? 'Asistente apagado' : aiReady ? 'Asistente conectado' : 'Asistente conectado · IA no disponible';
   $('offlineBanner').style.display = online ? 'none' : 'block';
@@ -281,6 +283,7 @@ async function checkHealth() {
 }
 function requireAi() {
   if (!online) { toast('Encendé primero tu asistente local.'); return false; }
+  if (!profileReady) { toast('Completá primero «Mi perfil» para evaluar vacantes con tus propios datos.'); showView('perfil'); return false; }
   if (!aiReady) { toast(aiHint || 'La IA local (Ollama) no está disponible.'); return false; }
   return true;
 }

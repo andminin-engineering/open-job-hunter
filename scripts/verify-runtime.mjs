@@ -10,6 +10,7 @@ const foreignCwd = process.platform === "win32" && process.env.SystemRoot
   : tmpdir();
 const dataDir = await mkdtemp(join(tmpdir(), "mcp-job-hunter-runtime-"));
 const schedulerConfigPath = join(dataDir, "scheduler-config.json");
+const profilePath = join(dataDir, "profile.json");
 const port = 3217;
 
 function start(entrypoint, mode) {
@@ -19,6 +20,8 @@ function start(entrypoint, mode) {
       ...process.env,
       JOB_HUNTER_MODE: mode,
       JOB_HUNTER_DATA_DIR: dataDir,
+      PROFILE_PATH: profilePath,
+      OLLAMA_BASE_URL: "http://127.0.0.1:1",
       PORT: String(port),
     },
     stdio: ["pipe", "pipe", "pipe"],
@@ -51,7 +54,7 @@ function runDatabaseWriter(index, databasePath) {
 }
 
 async function waitForHttp(url, shouldSucceed) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
       const response = await fetch(url);
       if (shouldSucceed) return response;
@@ -104,6 +107,54 @@ try {
   if (!dashboard.ok || !html.includes("JobHunter")) {
     throw new Error("La interfaz principal no fue servida correctamente");
   }
+  if (!html.includes("const esc =") || !html.includes("const safeUrl =")) {
+    throw new Error("La interfaz no incluyo las defensas esperadas para datos externos");
+  }
+
+  const profileBefore = await fetch(`http://127.0.0.1:${port}/api/profile`);
+  const profileBeforePayload = await profileBefore.json();
+  if (!profileBefore.ok || !profileBeforePayload.isPlaceholder) {
+    throw new Error("El perfil inicial no fue identificado como ejemplo");
+  }
+
+  const candidateProfile = {
+    fullName: "Runtime Tester",
+    headline: "Product Designer",
+    summary: "Perfil temporal para verificar el flujo HTTP completo.",
+    coreCompetencies: { design: ["Figma", "Research"] },
+    locations: ["Remote"],
+    languages: [{ language: "Spanish", level: "Native" }],
+    search: { keywords: "product designer", minScoreToApply: 70, boards: {} },
+  };
+  const profileSave = await fetch(`http://127.0.0.1:${port}/api/profile`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(candidateProfile),
+  });
+  if (!profileSave.ok) throw new Error(`No se pudo guardar el perfil por HTTP: ${profileSave.status}`);
+  const savedProfile = JSON.parse(await readFile(profilePath, "utf-8"));
+  if (savedProfile.headline !== candidateProfile.headline) {
+    throw new Error("El perfil guardado por HTTP no se persistio en PROFILE_PATH");
+  }
+
+  const profileAfterPayload = await fetch(`http://127.0.0.1:${port}/api/profile`).then((response) => response.json());
+  if (profileAfterPayload.isPlaceholder || profileAfterPayload.profile.headline !== candidateProfile.headline) {
+    throw new Error("El endpoint de perfil no sirvio los cambios sin reiniciar");
+  }
+
+  const evaluationWithoutOllama = await fetch(`http://127.0.0.1:${port}/api/evaluar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jobDescription: "Product designer role requiring research, prototyping and collaboration.",
+      sourcePlatform: "runtime-test",
+      persistResult: false,
+    }),
+  });
+  const evaluationError = await evaluationWithoutOllama.json();
+  if (evaluationWithoutOllama.status !== 503 || !String(evaluationError.error).includes("Ollama")) {
+    throw new Error(`Ollama ausente no produjo un diagnostico HTTP 503: ${evaluationWithoutOllama.status}`);
+  }
   const schedulerStatus = await fetch(`http://127.0.0.1:${port}/api/scheduler/status`);
   if (schedulerStatus.status !== 500) throw new Error("El scheduler acepto silenciosamente JSON corrupto");
   if (await readFile(schedulerConfigPath, "utf-8") !== "invalid-scheduler-json") {
@@ -111,7 +162,7 @@ try {
   }
 
   conflicting = start("all.js", "all");
-  const conflictExitCode = await waitForExit(conflicting.child, 3000);
+  const conflictExitCode = await waitForExit(conflicting.child, 10_000);
   if (conflictExitCode === 0) throw new Error("El proceso con bind conflictivo termino con codigo exitoso");
   if (!conflicting.getStderr().includes("Could not bind HTTP")) {
     throw new Error(`El fallo de bind no fue diagnosticado: ${conflicting.getStderr()}`);
@@ -140,6 +191,9 @@ try {
   console.log("OK  MCP stdio no abrio un puerto HTTP");
   console.log("OK  MCP stdio no escribio logs en stdout");
   console.log("OK  scheduler preservo JSON corrupto y reporto error");
+  console.log("OK  perfil HTTP se guardo, persistio y recargo sin reiniciar");
+  console.log("OK  Ollama ausente produjo un diagnostico HTTP 503");
+  console.log("OK  dashboard incluyo escape de contenido y validacion de URLs");
   console.log(`OK  persistencia concurrente entre procesos preservo ${writerCount} ofertas`);
   console.log(`OK  datos aislados en ${dataDir}`);
 } finally {

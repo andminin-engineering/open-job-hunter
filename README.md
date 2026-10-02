@@ -12,6 +12,8 @@ No cloud, no data leaving your machine, no vendor lock-in. You describe yourself
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org)
 [![CI](https://github.com/andminin-engineering/open-job-hunter/actions/workflows/ci.yml/badge.svg)](https://github.com/andminin-engineering/open-job-hunter/actions/workflows/ci.yml)
 
+[Public beta testing guide](./docs/BETA_TESTING.md) · [Send beta feedback](https://github.com/andminin-engineering/open-job-hunter/issues/new?template=beta-feedback.yml)
+
 </div>
 
 ## Code signing policy
@@ -92,6 +94,8 @@ cp .env.example .env
 npm start
 ```
 
+Run `npm run doctor` after building to check paths, local data access, profile setup and Ollama readiness. It reports optional setup gaps as warnings and exits non-zero for broken installation requirements.
+
 ## Configure your profile
 
 This is the heart of the tool. The easiest way is the **Mi perfil** tab of the web interface, which saves to `config/profile.json` (or `PROFILE_PATH`). Until you replace the example name, the dashboard warns that evaluations still use the example profile. You can also copy the example and edit it by hand:
@@ -99,19 +103,16 @@ This is the heart of the tool. The easiest way is the **Mi perfil** tab of the w
 ```jsonc
 {
   "fullName": "Your Name",
-  "headline": "Senior Backend Engineer / Solution Architect",
-  "seniorityYears": 10,
+  "headline": "Your Professional Headline",
   "summary": "A 2-3 sentence pitch of who you are and what you solve best.",
   "coreCompetencies": {
-    "backend": ["Java (Spring Boot)", "Node.js (NestJS)"],
-    "architecture": ["Distributed systems", "DDD", "Resilience patterns"],
-    "cloud": ["AWS (ECS, RDS)", "Docker", "Kubernetes"]
+    "skills": ["Your most relevant skills"],
+    "tools": ["Tools you use"]
   },
   "portfolioUrl": "https://github.com/your-handle",
-  "salaryTargetUsd": 3000,
   "languages": [{ "language": "English", "level": "B2" }],
   "search": {
-    "keywords": "backend OR software architect OR senior",
+    "keywords": "roles you want to find",
     "minScoreToApply": 70,
     "boards": { "greenhouse": ["stripe", "datadog"], "lever": ["lever"] }
   }

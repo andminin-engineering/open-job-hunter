@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/andminin-engineering/open-job-hunter/security/advisories/new
+    about: Report security issues privately. Do not include them in beta feedback.
