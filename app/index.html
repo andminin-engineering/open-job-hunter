@@ -116,7 +116,9 @@
     Podés seguir organizando tus postulaciones mientras tanto.
   </div>
   <div class="banner-warn" id="profileBanner">
-    <strong>Todavía estás usando el perfil de ejemplo.</strong> Las evaluaciones comparan cada aviso con tu perfil: completalo en <a href="#" id="goProfile">👤 Mi perfil</a> para obtener resultados reales.
+    <strong id="profileBannerTitle">Todavía estás usando el perfil de ejemplo.</strong>
+    <span id="profileBannerMessage">Las evaluaciones comparan cada aviso con tu perfil: completalo en</span>
+    <a href="#" id="goProfile">👤 Mi perfil</a><span id="profileBannerSuffix"> para obtener resultados reales.</span>
   </div>
 
   <!-- VISTA: PIPELINE -->
@@ -199,7 +201,7 @@
           <div class="field"><label for="pKeywords">Puestos que buscás</label><input id="pKeywords" placeholder="Ej: diseñador UX, product designer" /><div class="hint">Separados por comas. Se usan en «Buscar ofertas».</div></div>
           <div class="field"><label for="pMinScore">Compatibilidad mínima para postular (%)</label><input id="pMinScore" type="number" min="0" max="100" /></div>
         </div>
-        <button class="btn" type="submit" id="profileBtn">Guardar mi perfil</button>
+        <button class="btn" type="submit" id="profileBtn" disabled>Guardar mi perfil</button>
         <span class="hint" id="profileStatus" style="margin-left:10px"></span>
       </form>
     </div>
@@ -246,7 +248,7 @@ const NEXT_ACTIONS = {
 const $ = (id) => document.getElementById(id);
 // Offer data comes from third-party job boards: never inject it into the page unescaped.
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const safeUrl = (value) => { try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } };
+const safeUrl = (value) => { try { const raw = String(value ?? ''); if (raw !== raw.trim()) return ''; const u = new URL(raw); return ['http:', 'https:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } };
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3200); }
 
 /* Tabs */
@@ -262,6 +264,7 @@ let online = false;
 let aiReady = false;
 let aiHint = '';
 let profileReady = false;
+let profileErrorHint = '';
 async function checkHealth() {
   let health = null;
   try {
@@ -273,16 +276,30 @@ async function checkHealth() {
   aiReady = Boolean(ai && ai.reachable && ai.modelAvailable);
   aiHint = ai && ai.hint ? ai.hint : '';
   profileReady = Boolean(health && health.profileConfigured);
+  profileErrorHint = health && health.profileError ? health.profileError : '';
   $('connDot').className = 'dot ' + (!online ? 'bad' : aiReady ? 'ok' : 'warn');
   $('connText').textContent = !online ? 'Asistente apagado' : aiReady ? 'Asistente conectado' : 'Asistente conectado · IA no disponible';
   $('offlineBanner').style.display = online ? 'none' : 'block';
   $('aiBanner').style.display = online && !aiReady ? 'block' : 'none';
   $('aiHint').textContent = aiHint;
-  $('profileBanner').style.display = online && health && health.profileConfigured === false ? 'block' : 'none';
+  const showProfileBanner = online && health && (health.profileConfigured === false || profileErrorHint);
+  $('profileBanner').style.display = showProfileBanner ? 'block' : 'none';
+  $('profileBannerTitle').textContent = profileErrorHint ? 'No se pudo leer tu perfil.' : 'Todavía estás usando el perfil de ejemplo.';
+  if (profileErrorHint) {
+    $('profileBannerMessage').textContent = `${profileErrorHint} Corregí o eliminá el archivo de perfil para volver a configurarlo; la aplicación no lo sobrescribirá.`;
+    $('goProfile').style.display = 'none';
+    $('profileBannerSuffix').style.display = 'none';
+  } else {
+    $('profileBannerMessage').textContent = 'Las evaluaciones comparan cada aviso con tu perfil: completalo en';
+    $('goProfile').style.display = '';
+    $('profileBannerSuffix').style.display = '';
+  }
+  if (online && loadedProfile === null && !profileLoading) void loadProfileForm();
   return online;
 }
 function requireAi() {
   if (!online) { toast('Encendé primero tu asistente local.'); return false; }
+  if (profileErrorHint) { toast(profileErrorHint); showView('perfil'); return false; }
   if (!profileReady) { toast('Completá primero «Mi perfil» para evaluar vacantes con tus propios datos.'); showView('perfil'); return false; }
   if (!aiReady) { toast(aiHint || 'La IA local (Ollama) no está disponible.'); return false; }
   return true;
@@ -403,6 +420,7 @@ $('qImport').addEventListener('click', () => discovery(true));
 
 /* Perfil */
 let loadedProfile = null;
+let profileLoading = false;
 const splitList = (text) => text.split(',').map(x => x.trim()).filter(Boolean);
 const lines = (text) => text.split('\n').map(x => x.trim()).filter(Boolean);
 function fillProfileForm(p) {
@@ -420,17 +438,37 @@ function fillProfileForm(p) {
   $('pMinScore').value = search.minScoreToApply ?? 70;
 }
 async function loadProfileForm() {
+  if (profileLoading || loadedProfile !== null) return;
+  profileLoading = true;
+  $('profileBtn').disabled = true;
+  $('profileStatus').textContent = 'Cargando tu perfil…';
   try {
-    const data = await fetch(API + '/api/profile').then(r => r.json());
-    if (!data.ok) throw new Error(data.error || 'no se pudo leer el perfil');
+    const response = await fetch(API + '/api/profile');
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || 'no se pudo leer el perfil');
     loadedProfile = data.profile;
     fillProfileForm(data.profile);
+    $('profileStatus').textContent = '';
+    $('profileBtn').disabled = false;
     // Example data must never become the search term without the user choosing it.
     if (!data.isPlaceholder && !$('qSearch').value) $('qSearch').value = $('pKeywords').value;
-  } catch (e) { toast('No pude cargar tu perfil: ' + e.message); }
+  } catch (e) {
+    loadedProfile = null;
+    $('profileBtn').disabled = true;
+    $('profileStatus').textContent = `No se pudo cargar el perfil: ${e.message}. Corregí o eliminá el archivo; no se sobrescribirá.`;
+    toast('No pude cargar tu perfil: ' + e.message);
+  } finally {
+    profileLoading = false;
+  }
 }
 $('profileForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
+  if (loadedProfile === null) {
+    $('profileBtn').disabled = true;
+    $('profileStatus').textContent = 'Esperá a que el perfil termine de cargar. No se enviaron cambios.';
+    toast('No se puede guardar hasta cargar el perfil existente.');
+    return;
+  }
   const numberOrUndefined = (v) => v === '' ? undefined : Number(v);
   const keywords = $('pKeywords').value.trim();
   const previousBoards = (loadedProfile && loadedProfile.search && loadedProfile.search.boards) || {};
@@ -470,11 +508,11 @@ $('profileForm').addEventListener('submit', async (ev) => {
     if (data.isPlaceholder) toast('Cambiá «Your Name» por tu nombre para usar tu propio perfil.');
     checkHealth();
   } catch (e) { $('profileStatus').textContent = ''; toast('Error: ' + e.message); }
-  finally { $('profileBtn').disabled = false; }
+  finally { $('profileBtn').disabled = loadedProfile === null; }
 });
 
 /* Init */
-checkHealth().then(ok => { if (ok) { loadPipeline(); loadProfileForm(); } });
+checkHealth().then(ok => { if (ok) loadPipeline(); });
 setInterval(checkHealth, 15000);
 </script>
 </body>

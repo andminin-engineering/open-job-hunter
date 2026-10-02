@@ -15,7 +15,9 @@ Buscamos personas de cualquier profesión —no solamente tecnología— que qui
 3. Completá **Mi perfil** y probá una búsqueda o una vacante real.
 4. Compartí una experiencia sin datos personales mediante el formulario de Beta feedback.
 
-Si el proyecto te resulta útil, una ⭐ en GitHub ayuda a que otras personas lo descubran y demuestra interés legítimo de la comunidad mientras avanzamos hacia la firma del instalador de Windows con SignPath Foundation. La estrella no es obligatoria para participar.
+Si el proyecto te resulta útil, una ⭐ en GitHub ayuda a que otras personas lo descubran. La estrella es bienvenida, pero nunca es obligatoria para probar, informar problemas o contribuir.
+
+En paralelo, el proyecto está preparando los controles técnicos y de gobernanza necesarios para solicitar la firma del instalador de Windows mediante SignPath Foundation.
 
 - Repositorio: https://github.com/andminin-engineering/open-job-hunter
 - Descarga beta: `[REPLACE_WITH_RELEASE_URL]`
