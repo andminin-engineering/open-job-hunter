@@ -70,7 +70,7 @@ To uninstall the installed edition, open **Windows Settings → Apps → Install
 
 ### Developer / MCP installation
 
-Requires **Node ≥ 20** and a running **[Ollama](https://ollama.com)** instance.
+Requires **Node ≥ 20** and a running **[Ollama](https://ollama.com)** instance. The model needs roughly 5–6 GB of free RAM; the dashboard reports when Ollama or the model is missing instead of failing the evaluation.
 
 ```bash
 # 1. Clone & install
@@ -94,7 +94,7 @@ npm start
 
 ## Configure your profile
 
-This is the heart of the tool. Copy the example and make it yours:
+This is the heart of the tool. The easiest way is the **Mi perfil** tab of the web interface, which saves to `config/profile.json` (or `PROFILE_PATH`). Until you replace the example name, the dashboard warns that evaluations still use the example profile. You can also copy the example and edit it by hand:
 
 ```jsonc
 {
