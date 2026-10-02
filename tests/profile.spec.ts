@@ -1,6 +1,6 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { matchesSearchTerm, splitSearchTerms } from "../src/search.js";
 
@@ -50,8 +50,51 @@ describe("candidate profile", () => {
   });
 
   it("rejects an invalid profile without writing it", async () => {
-    const { profile } = await profileModuleAtTemporaryPath();
+    const { profilePath, profile } = await profileModuleAtTemporaryPath();
     await expect(profile.saveProfile({ fullName: "A" })).rejects.toThrow();
+    await expect(access(profilePath)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("refuses to evaluate with the example profile and allows it once the user saves their own", async () => {
+    const { profile } = await profileModuleAtTemporaryPath();
+    await expect(profile.assertProfileConfigured()).rejects.toBeInstanceOf(profile.ProfileNotConfiguredError);
+
+    await profile.saveProfile(designer);
+
+    await expect(profile.assertProfileConfigured()).resolves.toMatchObject({ fullName: "Ana Perez" });
+  });
+
+  it("reports a corrupt profile instead of silently falling back to the example", async () => {
+    const { profilePath, profile } = await profileModuleAtTemporaryPath();
+    await mkdir(dirname(profilePath), { recursive: true });
+    await writeFile(profilePath, "{ not json", "utf-8");
+
+    await expect(profile.loadProfile()).rejects.toThrow(/not valid/);
+    expect(await readFile(profilePath, "utf-8")).toBe("{ not json");
+  });
+
+  it("keeps a copy of a corrupt profile before an explicit save replaces it", async () => {
+    const { profilePath, profile } = await profileModuleAtTemporaryPath();
+    await mkdir(dirname(profilePath), { recursive: true });
+    await writeFile(profilePath, "{ not json", "utf-8");
+
+    await profile.saveProfile(designer);
+
+    const entries = await readdir(dirname(profilePath));
+    const backup = entries.find((name) => name.startsWith("profile.json.corrupt-"));
+    expect(backup).toBeDefined();
+    expect(await readFile(join(dirname(profilePath), backup!), "utf-8")).toBe("{ not json");
+    expect(JSON.parse(await readFile(profilePath, "utf-8")).fullName).toBe("Ana Perez");
+  });
+
+  it("writes concurrent saves through unique temporary files and leaves none behind", async () => {
+    const { profilePath, profile } = await profileModuleAtTemporaryPath();
+    const names = Array.from({ length: 8 }, (_, index) => `Candidate ${index}`);
+
+    await Promise.all(names.map((fullName) => profile.saveProfile({ ...designer, fullName })));
+
+    expect(names).toContain(JSON.parse(await readFile(profilePath, "utf-8")).fullName);
+    expect(await readdir(dirname(profilePath))).toEqual(["profile.json"]);
   });
 
   it("builds the evaluator prompt from the profile without assuming an architecture role", async () => {

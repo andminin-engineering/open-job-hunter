@@ -8,14 +8,17 @@ import { z } from "zod";
 import nodemailer from "nodemailer";
 import { buildEvaluatorPrompt } from "./prompts.js";
 import {
+  assertProfileConfigured,
   isPlaceholderProfile,
   loadProfile,
   loadProfileWithSource,
+  ProfileNotConfiguredError,
   profileSearchKeywords,
   saveProfile,
   type Profile,
 } from "./profile.js";
 import { checkOllama, DEFAULT_OLLAMA_MODEL, generateJson, OllamaUnavailableError } from "./ollama.js";
+import { stripLegacySchedulerDefaults } from "./scheduler-config.js";
 import { matchesSearchTerm, splitSearchTerms } from "./search.js";
 import {
   actualizarOfertaMetadata,
@@ -182,15 +185,9 @@ async function getDefaultSchedulerConfig(): Promise<SchedulerConfig> {
   });
 }
 
-// Search that earlier versions wrote into scheduler-config.json whenever the
-// digest email was saved; it is not a user choice and must not shadow the profile.
-const LEGACY_DEFAULT_REMOTIVE_SEARCH = "software architect OR delivery lead OR backend java senior";
-
 async function readSchedulerOverrides(): Promise<Record<string, any>> {
   try {
-    const overrides = JSON.parse(await readFile(SCHEDULER_CONFIG_PATH, "utf-8"));
-    if (overrides.core?.remotive?.search === LEGACY_DEFAULT_REMOTIVE_SEARCH) delete overrides.core;
-    return overrides;
+    return stripLegacySchedulerDefaults(JSON.parse(await readFile(SCHEDULER_CONFIG_PATH, "utf-8")));
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") return {};
     throw new Error(`Could not read scheduler configuration at ${SCHEDULER_CONFIG_PATH}`, { cause: error });
@@ -608,6 +605,8 @@ async function discoverJobsFromLever(company: string, companyLabel: string | und
 }
 
 async function runBatchEvaluation(jobs: z.infer<typeof JobEvaluationSchema>[], continueOnError = true) {
+  // Fail the whole batch up front instead of recording the same error once per job.
+  await assertProfileConfigured();
   const results: Array<{
     index: number;
     ok: boolean;
@@ -723,6 +722,8 @@ async function discoverJobsFromRemotive(search: string, limit: number) {
 }
 
 async function executeCoreDiscoveryImport(parsed: z.infer<typeof CoreDiscoverySchema>) {
+  // Checked before discovery so no external source is queried for a fictional candidate.
+  await assertProfileConfigured();
   const discoveryItems: Array<{
     title: string;
     company: string;
@@ -1115,7 +1116,7 @@ async function parseJsonBody(req: any): Promise<unknown> {
 }
 
 async function evaluarOferta(input: z.infer<typeof JobEvaluationSchema>) {
-  const profile = await loadProfile();
+  const profile = await assertProfileConfigured();
   const systemPrompt = buildEvaluatorPrompt(profile);
   const promptConsolidado = `${systemPrompt}
     
@@ -1375,13 +1376,20 @@ const httpServer = createServer(async (req, res) => {
 
     if (req.method === "GET" && path === "/health") {
       // ok reflects the HTTP backend; ollama tells the UI whether evaluations can actually run.
-      const [ollama, { profile }] = await Promise.all([checkOllama(), loadProfileWithSource()]);
+      // An unreadable profile is reported, not raised, so the backend still looks alive.
+      const [ollama, profileStatus] = await Promise.all([
+        checkOllama(),
+        loadProfile().then(
+          (profile) => ({ profileConfigured: !isPlaceholderProfile(profile) }),
+          (error) => ({ profileConfigured: false, profileError: error instanceof Error ? error.message : String(error) })
+        ),
+      ]);
       writeHttpJson(res, 200, {
         ok: true,
         service: "open-job-hunter",
         mode: RUNTIME_MODE,
         ollama,
-        profileConfigured: !isPlaceholderProfile(profile),
+        ...profileStatus,
       });
       return;
     }
@@ -1810,7 +1818,9 @@ const httpServer = createServer(async (req, res) => {
     writeHttpJson(res, 404, { ok: false, error: "Endpoint no encontrado" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error no controlado";
-    const status = error instanceof OllamaUnavailableError ? error.statusCode : error instanceof z.ZodError ? 400 : 500;
+    const status = error instanceof OllamaUnavailableError || error instanceof ProfileNotConfiguredError
+      ? error.statusCode
+      : error instanceof z.ZodError ? 400 : 500;
     writeHttpJson(res, status, { ok: false, error: message });
   }
 });

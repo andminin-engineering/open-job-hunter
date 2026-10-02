@@ -1,9 +1,11 @@
 import { constants } from "node:fs";
 import { access, mkdir, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const homeDir = homedir();
 const dataOverride = process.env.JOB_HUNTER_DATA_DIR;
 const profileOverride = process.env.PROFILE_PATH;
 const dataDir = dataOverride && isAbsolute(dataOverride)
@@ -17,8 +19,18 @@ const ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
 const ollamaModel = process.env.OLLAMA_MODEL ?? "qwen2.5:7b";
 const checks = [];
 
+// Output is meant to be pasted into public issues: hide the project location,
+// the home directory and any user name segment (Users/<name>, home/<name>).
+function redact(text) {
+  let redacted = String(text);
+  for (const [prefix, label] of [[projectRoot, "<proyecto>"], [homeDir, "~"]]) {
+    if (prefix) redacted = redacted.split(prefix).join(label);
+  }
+  return redacted.replace(/([\\/](?:Users|home)[\\/])[^\\/\s]+/gi, "$1<usuario>");
+}
+
 function result(level, name, detail) {
-  checks.push({ level, name, detail });
+  checks.push({ level, name, detail: redact(detail) });
 }
 
 const major = Number(process.versions.node.split(".")[0]);

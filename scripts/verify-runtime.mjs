@@ -13,7 +13,7 @@ const schedulerConfigPath = join(dataDir, "scheduler-config.json");
 const profilePath = join(dataDir, "profile.json");
 const port = 3217;
 
-function start(entrypoint, mode) {
+function start(entrypoint, mode, extraEnv = {}) {
   const child = spawn(process.execPath, [join(projectRoot, "build", "bin", entrypoint)], {
     cwd: foreignCwd,
     env: {
@@ -23,6 +23,7 @@ function start(entrypoint, mode) {
       PROFILE_PATH: profilePath,
       OLLAMA_BASE_URL: "http://127.0.0.1:1",
       PORT: String(port),
+      ...extraEnv,
     },
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -66,6 +67,28 @@ async function waitForHttp(url, shouldSucceed) {
   throw new Error(shouldSucceed ? `HTTP no respondio en ${url}` : `MCP abrio inesperadamente ${url}`);
 }
 
+async function postJson(path, body, method = "POST") {
+  const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { status: response.status, payload: await response.json() };
+}
+
+/** Sends newline-delimited JSON-RPC to MCP stdio and waits for the response with the given id. */
+async function mcpRequest(runtime, message, timeoutMs = 10_000) {
+  runtime.child.stdin.write(`${JSON.stringify(message)}\n`);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const response = runtime.getStdout().split("\n").filter(Boolean).map((line) => JSON.parse(line))
+      .find((item) => item.id === message.id);
+    if (response) return response;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+  }
+  throw new Error(`MCP no respondio ${message.method}: ${runtime.getStderr()}`);
+}
+
 async function stop(child) {
   if (child.exitCode !== null) return;
   await new Promise((resolveExit) => {
@@ -102,6 +125,9 @@ try {
   }
   const healthPayload = await health.json();
   if (healthPayload.mode !== "http") throw new Error(`Healthcheck reporto modo incorrecto: ${healthPayload.mode}`);
+  if (healthPayload.profileConfigured !== false || healthPayload.ollama?.reachable !== false) {
+    throw new Error(`Healthcheck no reporto perfil de ejemplo y Ollama ausente: ${JSON.stringify(healthPayload)}`);
+  }
   const dashboard = await fetch(`http://127.0.0.1:${port}/`);
   const html = await dashboard.text();
   if (!dashboard.ok || !html.includes("JobHunter")) {
@@ -115,6 +141,24 @@ try {
   const profileBeforePayload = await profileBefore.json();
   if (!profileBefore.ok || !profileBeforePayload.isPlaceholder) {
     throw new Error("El perfil inicial no fue identificado como ejemplo");
+  }
+
+  const sampleJob = {
+    jobDescription: "Product designer role requiring research, prototyping and collaboration.",
+    sourcePlatform: "runtime-test",
+    persistResult: false,
+  };
+  for (const [path, body] of [["/api/evaluar", sampleJob], ["/api/evaluar-lote", { jobs: [sampleJob] }]]) {
+    const blocked = await postJson(path, body);
+    if (blocked.status !== 409 || !String(blocked.payload.error).includes("Mi perfil")) {
+      throw new Error(`${path} evaluo con el perfil de ejemplo: ${blocked.status}`);
+    }
+  }
+
+  const invalidSave = await postJson("/api/profile", { fullName: "A" }, "PUT");
+  if (invalidSave.status !== 400) throw new Error(`Un perfil invalido no fue rechazado con 400: ${invalidSave.status}`);
+  if (await readFile(profilePath, "utf-8").then(() => true, () => false)) {
+    throw new Error("Un perfil invalido llego a escribirse en PROFILE_PATH");
   }
 
   const candidateProfile = {
@@ -141,15 +185,13 @@ try {
   if (profileAfterPayload.isPlaceholder || profileAfterPayload.profile.headline !== candidateProfile.headline) {
     throw new Error("El endpoint de perfil no sirvio los cambios sin reiniciar");
   }
+  const healthAfterSave = await fetch(`http://127.0.0.1:${port}/health`).then((response) => response.json());
+  if (healthAfterSave.profileConfigured !== true) throw new Error("Healthcheck no reflejo el perfil guardado");
 
   const evaluationWithoutOllama = await fetch(`http://127.0.0.1:${port}/api/evaluar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jobDescription: "Product designer role requiring research, prototyping and collaboration.",
-      sourcePlatform: "runtime-test",
-      persistResult: false,
-    }),
+    body: JSON.stringify(sampleJob),
   });
   const evaluationError = await evaluationWithoutOllama.json();
   if (evaluationWithoutOllama.status !== 503 || !String(evaluationError.error).includes("Ollama")) {
@@ -171,10 +213,28 @@ try {
   await stop(http.child);
   http = undefined;
 
-  mcp = start("mcp.js", "mcp");
+  // A profile path that does not exist yet, so MCP runs on the shipped example.
+  mcp = start("mcp.js", "mcp", { PROFILE_PATH: join(dataDir, "mcp-unconfigured", "profile.json") });
   await waitForHttp(`http://127.0.0.1:${port}/health`, false);
   if (mcp.child.exitCode !== null) throw new Error(`MCP termino prematuramente: ${mcp.getStderr()}`);
   if (mcp.getStdout() !== "") throw new Error(`MCP contamino stdout sin recibir mensajes: ${mcp.getStdout()}`);
+  await mcpRequest(mcp, {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "verify-runtime", version: "0" } },
+  });
+  mcp.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
+  const mcpEvaluation = await mcpRequest(mcp, {
+    jsonrpc: "2.0",
+    id: 2,
+    method: "tools/call",
+    params: { name: "evaluar_oferta_laboral", arguments: sampleJob },
+  });
+  const mcpPayload = JSON.parse(mcpEvaluation.result?.content?.[0]?.text ?? "{}");
+  if (mcpPayload.ok !== false || !String(mcpPayload.error).includes("Mi perfil")) {
+    throw new Error(`MCP evaluo con el perfil de ejemplo: ${JSON.stringify(mcpEvaluation)}`);
+  }
   await stop(mcp.child);
   mcp = undefined;
 
@@ -191,7 +251,10 @@ try {
   console.log("OK  MCP stdio no abrio un puerto HTTP");
   console.log("OK  MCP stdio no escribio logs en stdout");
   console.log("OK  scheduler preservo JSON corrupto y reporto error");
+  console.log("OK  HTTP y MCP rechazaron evaluar con el perfil de ejemplo");
+  console.log("OK  un perfil invalido fue rechazado sin escribirse");
   console.log("OK  perfil HTTP se guardo, persistio y recargo sin reiniciar");
+  console.log("OK  healthcheck reporto perfil y Ollama");
   console.log("OK  Ollama ausente produjo un diagnostico HTTP 503");
   console.log("OK  dashboard incluyo escape de contenido y validacion de URLs");
   console.log(`OK  persistencia concurrente entre procesos preservo ${writerCount} ofertas`);

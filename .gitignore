@@ -12,8 +12,11 @@ dist/
 
 # Personal profile & local pipeline data (keep the .example files only)
 config/profile.json
+config/profile.json.*
 config/scheduler.json
 src/data/db.json
+src/data/profile.json*
+src/data/scheduler-config.json
 src/data/*.backup*
 src/data/*.tmp*
 data/

@@ -22,7 +22,7 @@ Unsigned beta builds may trigger Windows SmartScreen. A hash and provenance esta
 7. Move a saved application to another pipeline stage.
 8. Close and reopen the application; confirm that your profile and pipeline remain available.
 
-Source installations can run `npm run doctor` for a privacy-safe local diagnostic. Warnings about an example profile or missing Ollama explain optional setup that is still incomplete; `ERROR` entries indicate a broken installation.
+Source installations can run `npm run doctor` for a local diagnostic. Its output replaces the project location, your home directory and `Users/<name>` or `home/<name>` path segments with placeholders; still review it before pasting it into an issue. Warnings about an example profile or missing Ollama explain optional setup that is still incomplete; `ERROR` entries indicate a broken installation.
 
 ## Send feedback
 
