@@ -18,10 +18,21 @@ function innerHtmlInterpolations(source: string): string[] {
   const script = source.match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
   const file = ts.createSourceFile("dashboard.js", script, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
   const expressions: string[] = [];
+  const renderingHelpers = new Map<string, ts.FunctionDeclaration>();
+  const visitedHelpers = new Set<string>();
+
+  function indexFunctions(node: ts.Node): void {
+    if (ts.isFunctionDeclaration(node) && node.name) renderingHelpers.set(node.name.text, node);
+    ts.forEachChild(node, indexFunctions);
+  }
 
   function collectTemplates(node: ts.Node): void {
     if (ts.isTemplateExpression(node)) {
       expressions.push(...node.templateSpans.map((span) => span.expression.getText(file)));
+    }
+    if (ts.isIdentifier(node) && renderingHelpers.has(node.text) && !visitedHelpers.has(node.text)) {
+      visitedHelpers.add(node.text);
+      collectTemplates(renderingHelpers.get(node.text)!);
     }
     ts.forEachChild(node, collectTemplates);
   }
@@ -39,6 +50,7 @@ function innerHtmlInterpolations(source: string): string[] {
     ts.forEachChild(node, visit);
   }
 
+  indexFunctions(file);
   visit(file);
   return expressions;
 }
@@ -87,6 +99,7 @@ describe("external data rendered through innerHTML", () => {
   it("sanitizes every external-data reference used by an HTML interpolation", () => {
     const interpolations = innerHtmlInterpolations(html);
     const externalReference = /\b(?:item|e|j)\.[A-Za-z_]\w*/g;
+    expect(interpolations).toContain("esc(item.id)");
 
     for (const expression of interpolations) {
       const references = [...expression.matchAll(externalReference)].map((match) => match[0]);
