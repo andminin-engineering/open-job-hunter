@@ -87,7 +87,8 @@
   .two-col { grid-template-columns: 1fr 1fr; } @media (max-width: 760px){ .two-col { grid-template-columns: 1fr; } }
   .discovery-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; font-size: .88rem; }
   section.view { display: none; } section.view.active { display: block; }
-  .banner-offline { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: var(--radius); padding: 14px 18px; margin-bottom: 18px; font-size: .9rem; display: none; }
+  .banner-offline, .banner-warn { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: var(--radius); padding: 14px 18px; margin-bottom: 18px; font-size: .9rem; display: none; }
+  .dot.warn { background: var(--warn); }
 </style>
 </head>
 <body>
@@ -101,12 +102,23 @@
   <button data-view="inicio" class="active">📋 Mis postulaciones</button>
   <button data-view="agregar">➕ Agregar vacante</button>
   <button data-view="buscar">🔍 Buscar ofertas</button>
+  <button data-view="perfil">👤 Mi perfil</button>
   <button data-view="ayuda">💡 Primeros pasos</button>
 </nav>
 
 <main>
   <div class="banner-offline" id="offlineBanner">
     <strong>Tu asistente local no está encendido.</strong> Abrí la aplicación JobHunter en tu computadora (o ejecutá <code>npm start</code> en la carpeta del proyecto) y esta página se conectará sola. Tus datos nunca salen de tu computadora.
+  </div>
+  <div class="banner-warn" id="aiBanner">
+    <strong>La inteligencia artificial local no está disponible, así que todavía no se pueden evaluar vacantes.</strong>
+    <span id="aiHint"></span>
+    Podés seguir organizando tus postulaciones mientras tanto.
+  </div>
+  <div class="banner-warn" id="profileBanner">
+    <strong id="profileBannerTitle">Todavía estás usando el perfil de ejemplo.</strong>
+    <span id="profileBannerMessage">Las evaluaciones comparan cada aviso con tu perfil: completalo en</span>
+    <a href="#" id="goProfile">👤 Mi perfil</a><span id="profileBannerSuffix"> para obtener resultados reales.</span>
   </div>
 
   <!-- VISTA: PIPELINE -->
@@ -148,7 +160,8 @@
       <p class="sub">El asistente busca en portales de empleo remoto y evalúa automáticamente cada oferta para vos.</p>
       <div class="field">
         <label for="qSearch">¿Qué tipo de puesto buscás?</label>
-        <input id="qSearch" placeholder="Ej: software architect, backend java, delivery lead" value="software architect" />
+        <input id="qSearch" placeholder="Ej: diseñador UX, data analyst, soporte técnico" />
+        <div class="hint">Se completa con las palabras clave de tu perfil. Separá varias búsquedas con comas.</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn secondary" id="qPreview">Ver ofertas</button>
@@ -159,13 +172,48 @@
     </div>
   </section>
 
+  <!-- VISTA: PERFIL -->
+  <section class="view" id="view-perfil">
+    <div class="card" style="max-width:760px;margin:0 auto">
+      <h2>Mi perfil</h2>
+      <p class="sub">El asistente compara cada vacante con estos datos. Se guardan solo en tu computadora.</p>
+      <form id="profileForm">
+        <div class="grid two-col">
+          <div class="field"><label for="pName">Nombre completo</label><input id="pName" required minlength="2" /></div>
+          <div class="field"><label for="pHeadline">Título profesional</label><input id="pHeadline" required minlength="2" placeholder="Ej: Diseñadora UX/UI Senior" /></div>
+          <div class="field"><label for="pYears">Años de experiencia</label><input id="pYears" type="number" min="0" max="60" /></div>
+          <div class="field"><label for="pSalary">Pretensión salarial (USD/mes)</label><input id="pSalary" type="number" min="1" /></div>
+          <div class="field"><label for="pPortfolio">Portfolio / LinkedIn</label><input id="pPortfolio" type="url" placeholder="https://…" /></div>
+          <div class="field"><label for="pLocations">Ubicación / modalidad</label><input id="pLocations" placeholder="Remoto, Argentina" /></div>
+        </div>
+        <div class="field"><label for="pSummary">Resumen</label><textarea id="pSummary" required minlength="10" placeholder="2 o 3 frases sobre quién sos y qué problemas resolvés mejor."></textarea></div>
+        <div class="field">
+          <label for="pSkills">Competencias</label>
+          <textarea id="pSkills" placeholder="herramientas: Figma, Miro&#10;metodologías: Design Thinking, Scrum"></textarea>
+          <div class="hint">Una categoría por línea, con el formato <code>categoría: habilidad, habilidad</code>.</div>
+        </div>
+        <div class="field">
+          <label for="pLanguages">Idiomas</label>
+          <textarea id="pLanguages" style="min-height:70px" placeholder="Español: Nativo&#10;Inglés: B2"></textarea>
+          <div class="hint">Uno por línea, con el formato <code>idioma: nivel</code>.</div>
+        </div>
+        <div class="grid two-col">
+          <div class="field"><label for="pKeywords">Puestos que buscás</label><input id="pKeywords" placeholder="Ej: diseñador UX, product designer" /><div class="hint">Separados por comas. Se usan en «Buscar ofertas».</div></div>
+          <div class="field"><label for="pMinScore">Compatibilidad mínima para postular (%)</label><input id="pMinScore" type="number" min="0" max="100" /></div>
+        </div>
+        <button class="btn" type="submit" id="profileBtn" disabled>Guardar mi perfil</button>
+        <span class="hint" id="profileStatus" style="margin-left:10px"></span>
+      </form>
+    </div>
+  </section>
+
   <!-- VISTA: AYUDA -->
   <section class="view" id="view-ayuda">
     <div class="hero card">
       <h1>Conseguí tu próximo trabajo, con método.</h1>
       <p class="sub" style="max-width:620px;margin:8px auto 0">JobHunter organiza tu búsqueda: encuentra vacantes, evalúa tu compatibilidad con inteligencia artificial local (tus datos no salen de tu computadora) y te acompaña postulación por postulación hasta la oferta.</p>
       <div class="steps">
-        <div class="step card"><span class="n">1</span><strong>Encendé tu asistente</strong><p class="hint">Abrí la app JobHunter en tu computadora. El punto verde arriba a la derecha te confirma que está funcionando.</p></div>
+        <div class="step card"><span class="n">1</span><strong>Encendé tu asistente</strong><p class="hint">Abrí la app JobHunter y completá «Mi perfil». Para evaluar vacantes necesitás <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> instalado y el modelo descargado (<code>ollama pull qwen2.5:7b</code>). El punto verde arriba a la derecha confirma que todo está listo.</p></div>
         <div class="step card"><span class="n">2</span><strong>Cargá o buscá vacantes</strong><p class="hint">Pegá un aviso que te interese o dejá que el asistente busque por vos en portales de empleo remoto.</p></div>
         <div class="step card"><span class="n">3</span><strong>Seguí tu progreso</strong><p class="hint">Mové cada tarjeta según avances: postulada → entrevista → oferta. Las métricas te muestran cómo venís.</p></div>
       </div>
@@ -198,43 +246,80 @@ const NEXT_ACTIONS = {
 };
 
 const $ = (id) => document.getElementById(id);
+// Offer data comes from third-party job boards: never inject it into the page unescaped.
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const safeUrl = (value) => { try { const raw = String(value ?? ''); if (raw !== raw.trim()) return ''; const u = new URL(raw); return ['http:', 'https:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } };
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3200); }
 
 /* Tabs */
-document.querySelectorAll('#tabs button').forEach(btn => btn.addEventListener('click', () => {
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('section.view').forEach(v => v.classList.remove('active'));
-  btn.classList.add('active');
-  $('view-' + btn.dataset.view).classList.add('active');
-}));
+function showView(view) {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.querySelectorAll('section.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+}
+document.querySelectorAll('#tabs button').forEach(btn => btn.addEventListener('click', () => showView(btn.dataset.view)));
+$('goProfile').addEventListener('click', (ev) => { ev.preventDefault(); showView('perfil'); });
 
 /* Conexión */
 let online = false;
+let aiReady = false;
+let aiHint = '';
+let profileReady = false;
+let profileErrorHint = '';
 async function checkHealth() {
+  let health = null;
   try {
-    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(4000) });
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(6000) });
     online = r.ok;
+    if (r.ok) health = await r.json();
   } catch { online = false; }
-  $('connDot').className = 'dot ' + (online ? 'ok' : 'bad');
-  $('connText').textContent = online ? 'Asistente conectado' : 'Asistente apagado';
+  const ai = health && health.ollama;
+  aiReady = Boolean(ai && ai.reachable && ai.modelAvailable);
+  aiHint = ai && ai.hint ? ai.hint : '';
+  profileReady = Boolean(health && health.profileConfigured);
+  profileErrorHint = health && health.profileError ? health.profileError : '';
+  $('connDot').className = 'dot ' + (!online ? 'bad' : aiReady ? 'ok' : 'warn');
+  $('connText').textContent = !online ? 'Asistente apagado' : aiReady ? 'Asistente conectado' : 'Asistente conectado · IA no disponible';
   $('offlineBanner').style.display = online ? 'none' : 'block';
+  $('aiBanner').style.display = online && !aiReady ? 'block' : 'none';
+  $('aiHint').textContent = aiHint;
+  const showProfileBanner = online && health && (health.profileConfigured === false || profileErrorHint);
+  $('profileBanner').style.display = showProfileBanner ? 'block' : 'none';
+  $('profileBannerTitle').textContent = profileErrorHint ? 'No se pudo leer tu perfil.' : 'Todavía estás usando el perfil de ejemplo.';
+  if (profileErrorHint) {
+    $('profileBannerMessage').textContent = `${profileErrorHint} Corregí o eliminá el archivo de perfil para volver a configurarlo; la aplicación no lo sobrescribirá.`;
+    $('goProfile').style.display = 'none';
+    $('profileBannerSuffix').style.display = 'none';
+  } else {
+    $('profileBannerMessage').textContent = 'Las evaluaciones comparan cada aviso con tu perfil: completalo en';
+    $('goProfile').style.display = '';
+    $('profileBannerSuffix').style.display = '';
+  }
+  if (online && loadedProfile === null && !profileLoading) void loadProfileForm();
   return online;
+}
+function requireAi() {
+  if (!online) { toast('Encendé primero tu asistente local.'); return false; }
+  if (profileErrorHint) { toast(profileErrorHint); showView('perfil'); return false; }
+  if (!profileReady) { toast('Completá primero «Mi perfil» para evaluar vacantes con tus propios datos.'); showView('perfil'); return false; }
+  if (!aiReady) { toast(aiHint || 'La IA local (Ollama) no está disponible.'); return false; }
+  return true;
 }
 
 /* Pipeline */
 function scoreBadge(ev) {
   if (!ev) return '';
-  const s = ev.match_score ?? 0;
+  const s = Number(ev.match_score) || 0;
   const cls = s >= 75 ? 'hi' : s >= 55 ? 'mid' : 'lo';
   return `<span class="score ${cls}">${s}% compatible</span>`;
 }
 function jobCard(item) {
   const acts = (NEXT_ACTIONS[item.estado] || [])
-    .map(([estado, label]) => `<button onclick="moveJob('${item.id}','${estado}')">${label}</button>`).join('');
-  const link = item.jobUrl ? `<a href="${item.jobUrl}" target="_blank" rel="noopener">ver aviso ↗</a>` : '';
+    .map(([estado, label]) => `<button data-id="${esc(item.id)}" data-estado="${esc(estado)}">${esc(label)}</button>`).join('');
+  const url = safeUrl(item.jobUrl);
+  const link = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">ver aviso ↗</a>` : '';
   return `<div class="job">
-    <div class="co">${item.company || 'Empresa sin nombre'}</div>
-    <div class="meta">${item.sourcePlatform || ''} ${item.expectedSalaryRange ? '· ' + item.expectedSalaryRange : ''}</div>
+    <div class="co">${esc(item.company || 'Empresa sin nombre')}</div>
+    <div class="meta">${esc(item.sourcePlatform)} ${item.expectedSalaryRange ? '· ' + esc(item.expectedSalaryRange) : ''}</div>
     <div>${scoreBadge(item.evaluacion)} ${link}</div>
     <div class="actions">${acts}</div>
   </div>`;
@@ -260,7 +345,11 @@ async function loadPipeline() {
     }).join('');
   } catch (e) { toast('No pude cargar tus postulaciones: ' + e.message); }
 }
-window.moveJob = async function (id, estado) {
+$('board').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button[data-id]');
+  if (btn) moveJob(btn.dataset.id, btn.dataset.estado);
+});
+async function moveJob(id, estado) {
   try {
     const r = await fetch(`${API}/api/postulaciones/${encodeURIComponent(id)}/estado`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }),
@@ -269,12 +358,12 @@ window.moveJob = async function (id, estado) {
     if (!data.ok) throw new Error(data.error || 'no se pudo actualizar');
     toast('¡Actualizado! 💪'); loadPipeline();
   } catch (e) { toast('Error: ' + e.message); }
-};
+}
 
 /* Agregar vacante */
 $('addForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  if (!online) { toast('Encendé primero tu asistente local.'); return; }
+  if (!requireAi()) return;
   $('addBtn').disabled = true; $('addStatus').textContent = 'Analizando… esto puede tardar un minuto.';
   try {
     const payload = {
@@ -291,9 +380,9 @@ $('addForm').addEventListener('submit', async (ev) => {
     const e = data.evaluation;
     const box = $('addResult');
     box.style.display = 'block';
-    box.innerHTML = `<strong>${e.apply ? '👍 Vale la pena postular' : '🤔 No parece el mejor match'}</strong> — compatibilidad ${e.match_score}%.<br/>
-      ${e.strong_points_to_highlight?.length ? '<br/><strong>Tus puntos fuertes para este puesto:</strong><br/>· ' + e.strong_points_to_highlight.join('<br/>· ') : ''}
-      ${e.detected_risks?.length ? '<br/><br/><strong>A tener en cuenta:</strong><br/>· ' + e.detected_risks.join('<br/>· ') : ''}`;
+    box.innerHTML = `<strong>${e.apply ? '👍 Vale la pena postular' : '🤔 No parece el mejor match'}</strong> — compatibilidad ${esc(e.match_score)}%.<br/>
+      ${e.strong_points_to_highlight?.length ? '<br/><strong>Tus puntos fuertes para este puesto:</strong><br/>· ' + e.strong_points_to_highlight.map(esc).join('<br/>· ') : ''}
+      ${e.detected_risks?.length ? '<br/><br/><strong>A tener en cuenta:</strong><br/>· ' + e.detected_risks.map(esc).join('<br/>· ') : ''}`;
     $('addStatus').textContent = 'Guardada en tu tablero ✅'; $('addForm').reset(); loadPipeline();
   } catch (e) { $('addStatus').textContent = ''; toast('Error: ' + e.message); }
   finally { $('addBtn').disabled = false; }
@@ -301,8 +390,9 @@ $('addForm').addEventListener('submit', async (ev) => {
 
 /* Buscar ofertas */
 async function discovery(importar) {
-  if (!online) { toast('Encendé primero tu asistente local.'); return; }
-  const search = $('qSearch').value.trim() || 'software architect';
+  if (importar ? !requireAi() : !online) { if (!online) toast('Encendé primero tu asistente local.'); return; }
+  const search = $('qSearch').value.trim();
+  if (search.length < 2) { toast('Escribí qué tipo de puesto buscás.'); $('qSearch').focus(); return; }
   $('qStatus').textContent = importar ? 'Buscando y evaluando cada oferta… puede tardar varios minutos.' : 'Buscando ofertas…';
   try {
     if (importar) {
@@ -315,16 +405,111 @@ async function discovery(importar) {
       const r = await fetch(`${API}/api/discovery/remotive?search=${encodeURIComponent(search)}&limit=10`);
       const data = await r.json();
       if (!data.ok) throw new Error(data.error || 'falló la búsqueda');
-      $('qStatus').textContent = `${data.total} ofertas encontradas:`;
-      $('qResults').innerHTML = (data.items || []).map(j => `<div class="discovery-item">
-        <strong>${j.title}</strong> — ${j.company}<br/>
-        <span class="hint">${j.location || ''} ${j.salary ? '· ' + j.salary : ''}</span>
-        ${j.url ? `<br/><a href="${j.url}" target="_blank" rel="noopener">ver aviso ↗</a>` : ''}</div>`).join('');
+      $('qStatus').textContent = data.total
+        ? `${data.total} ofertas encontradas:`
+        : 'No hay ofertas para esa búsqueda entre las publicadas recientemente en Remotive. Probá con otros términos o pegá un aviso en «Agregar vacante».';
+      $('qResults').innerHTML = (data.items || []).map(j => { const url = safeUrl(j.url); return `<div class="discovery-item">
+        <strong>${esc(j.title)}</strong> — ${esc(j.company)}<br/>
+        <span class="hint">${esc(j.location)} ${j.salary ? '· ' + esc(j.salary) : ''}</span>
+        ${url ? `<br/><a href="${esc(url)}" target="_blank" rel="noopener">ver aviso en Remotive ↗</a>` : ''}</div>`; }).join('');
     }
   } catch (e) { $('qStatus').textContent = ''; toast('Error: ' + e.message); }
 }
 $('qPreview').addEventListener('click', () => discovery(false));
 $('qImport').addEventListener('click', () => discovery(true));
+
+/* Perfil */
+let loadedProfile = null;
+let profileLoading = false;
+const splitList = (text) => text.split(',').map(x => x.trim()).filter(Boolean);
+const lines = (text) => text.split('\n').map(x => x.trim()).filter(Boolean);
+function fillProfileForm(p) {
+  $('pName').value = p.fullName || '';
+  $('pHeadline').value = p.headline || '';
+  $('pYears').value = p.seniorityYears ?? '';
+  $('pSalary').value = p.salaryTargetUsd ?? '';
+  $('pPortfolio').value = p.portfolioUrl || '';
+  $('pLocations').value = (p.locations || []).join(', ');
+  $('pSummary').value = p.summary || '';
+  $('pSkills').value = Object.entries(p.coreCompetencies || {}).map(([k, v]) => k + ': ' + v.join(', ')).join('\n');
+  $('pLanguages').value = (p.languages || []).map(l => l.language + ': ' + l.level).join('\n');
+  const search = p.search || {};
+  $('pKeywords').value = (search.boards && search.boards.remotive && search.boards.remotive.search) || search.keywords || '';
+  $('pMinScore').value = search.minScoreToApply ?? 70;
+}
+async function loadProfileForm() {
+  if (profileLoading || loadedProfile !== null) return;
+  profileLoading = true;
+  $('profileBtn').disabled = true;
+  $('profileStatus').textContent = 'Cargando tu perfil…';
+  try {
+    const response = await fetch(API + '/api/profile');
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || 'no se pudo leer el perfil');
+    loadedProfile = data.profile;
+    fillProfileForm(data.profile);
+    $('profileStatus').textContent = '';
+    $('profileBtn').disabled = false;
+    // Example data must never become the search term without the user choosing it.
+    if (!data.isPlaceholder && !$('qSearch').value) $('qSearch').value = $('pKeywords').value;
+  } catch (e) {
+    loadedProfile = null;
+    $('profileBtn').disabled = true;
+    $('profileStatus').textContent = `No se pudo cargar el perfil: ${e.message}. Corregí o eliminá el archivo; no se sobrescribirá.`;
+    toast('No pude cargar tu perfil: ' + e.message);
+  } finally {
+    profileLoading = false;
+  }
+}
+$('profileForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (loadedProfile === null) {
+    $('profileBtn').disabled = true;
+    $('profileStatus').textContent = 'Esperá a que el perfil termine de cargar. No se enviaron cambios.';
+    toast('No se puede guardar hasta cargar el perfil existente.');
+    return;
+  }
+  const numberOrUndefined = (v) => v === '' ? undefined : Number(v);
+  const keywords = $('pKeywords').value.trim();
+  const previousBoards = (loadedProfile && loadedProfile.search && loadedProfile.search.boards) || {};
+  const payload = {
+    fullName: $('pName').value.trim(),
+    headline: $('pHeadline').value.trim(),
+    seniorityYears: numberOrUndefined($('pYears').value),
+    salaryTargetUsd: numberOrUndefined($('pSalary').value),
+    portfolioUrl: $('pPortfolio').value.trim() || undefined,
+    locations: splitList($('pLocations').value),
+    summary: $('pSummary').value.trim(),
+    coreCompetencies: Object.fromEntries(lines($('pSkills').value).map(line => {
+      const i = line.indexOf(':');
+      return i > 0 ? [line.slice(0, i).trim(), splitList(line.slice(i + 1))] : ['general', splitList(line)];
+    })),
+    languages: lines($('pLanguages').value).map(line => {
+      const i = line.indexOf(':');
+      return i > 0 ? { language: line.slice(0, i).trim(), level: line.slice(i + 1).trim() } : { language: line, level: '' };
+    }),
+    search: {
+      keywords,
+      minScoreToApply: numberOrUndefined($('pMinScore').value) ?? 70,
+      boards: {
+        ...previousBoards,
+        remotive: keywords ? { search: keywords, limit: (previousBoards.remotive && previousBoards.remotive.limit) || 10 } : undefined,
+      },
+    },
+  };
+  $('profileBtn').disabled = true;
+  try {
+    const r = await fetch(API + '/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'no se pudo guardar');
+    loadedProfile = data.profile;
+    $('qSearch').value = keywords;
+    $('profileStatus').textContent = 'Perfil guardado ✅';
+    if (data.isPlaceholder) toast('Cambiá «Your Name» por tu nombre para usar tu propio perfil.');
+    checkHealth();
+  } catch (e) { $('profileStatus').textContent = ''; toast('Error: ' + e.message); }
+  finally { $('profileBtn').disabled = loadedProfile === null; }
+});
 
 /* Init */
 checkHealth().then(ok => { if (ok) loadPipeline(); });

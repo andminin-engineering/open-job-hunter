@@ -7,7 +7,19 @@ import { dirname } from "node:path";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 import { buildEvaluatorPrompt } from "./prompts.js";
-import { loadProfile } from "./profile.js";
+import {
+  assertProfileConfigured,
+  isPlaceholderProfile,
+  loadProfile,
+  loadProfileWithSource,
+  ProfileNotConfiguredError,
+  profileSearchKeywords,
+  saveProfile,
+  type Profile,
+} from "./profile.js";
+import { checkOllama, DEFAULT_OLLAMA_MODEL, generateJson, OllamaUnavailableError } from "./ollama.js";
+import { stripLegacySchedulerDefaults } from "./scheduler-config.js";
+import { matchesSearchTerm, splitSearchTerms } from "./search.js";
 import {
   actualizarOfertaMetadata,
   actualizarEstadoOferta,
@@ -21,7 +33,6 @@ import { DB_PATH, PROJECT_ROOT, SCHEDULER_CONFIG_PATH } from "./paths.js";
 
 const HTTP_PORT = Number(process.env.PORT ?? 3000);
 const HTTP_HOST = process.env.HOST ?? "127.0.0.1";
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
 const RUNTIME_MODE = process.env.JOB_HUNTER_MODE ?? "mcp";
 const MCP_ENABLED = RUNTIME_MODE === "mcp" || RUNTIME_MODE === "all";
 const HTTP_ENABLED = RUNTIME_MODE === "http" || RUNTIME_MODE === "all";
@@ -43,7 +54,7 @@ const JobEvaluationSchema = z.object({
   jobDescription: z.string().min(20),
   sourcePlatform: z.string().optional().default("LinkedIn"),
   expectedSalaryRange: z.string().optional(),
-  ollamaModel: z.string().optional().default("qwen2.5:7b"),
+  ollamaModel: z.string().optional().default(DEFAULT_OLLAMA_MODEL),
   company: z.string().optional(),
   jobUrl: z.string().url().optional(),
   persistResult: z.boolean().optional().default(true),
@@ -55,9 +66,18 @@ const JobEvaluationBatchSchema = z.object({
 });
 
 const JobDiscoverySchema = z.object({
-  search: z.string().min(2).optional().default("software engineer"),
+  // Falls back to the profile's search keywords when omitted; there is no role baked in.
+  search: z.string().trim().min(2).optional(),
   limit: z.number().int().positive().max(20).optional().default(10),
 });
+
+async function resolveSearch(search: string | undefined): Promise<string> {
+  const resolved = search ?? profileSearchKeywords(await loadProfile());
+  if (resolved.length < 2) {
+    throw new Error("Indica que tipo de puesto buscas, o completa las palabras clave de busqueda en Mi perfil.");
+  }
+  return resolved;
+}
 
 const GreenhouseDiscoverySchema = z.object({
   board: z.string().min(2),
@@ -136,60 +156,62 @@ const schedulerState: SchedulerRuntimeState = {
   isRunning: false,
 };
 
-function getDefaultSchedulerConfig(): SchedulerConfig {
+async function getDefaultSchedulerConfig(): Promise<SchedulerConfig> {
+  // Sources come from the user's profile instead of a fixed role and company list.
+  const profile = await loadProfile();
+  const search = profileSearchKeywords(profile);
+  const boards = profile.search.boards;
   return SchedulerSchema.parse({
     enabled: process.env.SCHEDULER_ENABLED === "true",
     intervalMinutes: process.env.SCHEDULER_INTERVAL_MINUTES ? Number(process.env.SCHEDULER_INTERVAL_MINUTES) : 180,
     timezone: process.env.SCHEDULER_TIMEZONE ?? "America/Argentina/Buenos_Aires",
     runHours: [8, 11, 14, 18, 21],
-    minScoreForDigest: 72,
+    minScoreForDigest: profile.search.minScoreToApply,
     topMatchesLimit: 12,
     recipientEmail: process.env.SCHEDULER_EMAIL_TO,
     fromName: "MCP Job Hunter Scheduler",
     core: {
-      remotive: {
-        search: "software architect OR delivery lead OR backend java senior",
-        limit: 10,
-      },
-      greenhouse: [
-        { board: "stripe", company: "Stripe", limit: 8 },
-        { board: "coinbase", company: "Coinbase", limit: 8 },
-        { board: "datadog", company: "Datadog", limit: 8 },
-        { board: "figma", company: "Figma", limit: 8 },
-        { board: "asana", company: "Asana", limit: 8 },
-        { board: "mongodb", company: "MongoDB", limit: 8 },
-      ],
-      lever: [
-        { company: "lever", companyLabel: "Lever", limit: 6 },
-      ],
+      remotive: search.length >= 2
+        ? { search, limit: Math.min(boards.remotive?.limit ?? 10, 20) }
+        : undefined,
+      greenhouse: boards.greenhouse?.length
+        ? boards.greenhouse.map((board) => ({ board, limit: 8 }))
+        : undefined,
+      lever: boards.lever?.length
+        ? boards.lever.map((company) => ({ company, limit: 6 }))
+        : undefined,
       continueOnError: true,
     },
   });
 }
 
-async function loadSchedulerConfig(): Promise<SchedulerConfig> {
-  const fallback = getDefaultSchedulerConfig();
-
+async function readSchedulerOverrides(): Promise<Record<string, any>> {
   try {
-    const raw = await readFile(SCHEDULER_CONFIG_PATH, "utf-8");
-    const parsed = JSON.parse(raw);
-    return SchedulerSchema.parse({
-      ...fallback,
-      ...parsed,
-      core: {
-        ...fallback.core,
-        ...(parsed.core ?? {}),
-      },
-    });
+    return stripLegacySchedulerDefaults(JSON.parse(await readFile(SCHEDULER_CONFIG_PATH, "utf-8")));
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") return fallback;
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return {};
     throw new Error(`Could not read scheduler configuration at ${SCHEDULER_CONFIG_PATH}`, { cause: error });
   }
 }
 
-async function saveSchedulerConfig(config: SchedulerConfig): Promise<void> {
+async function loadSchedulerConfig(): Promise<SchedulerConfig> {
+  const fallback = await getDefaultSchedulerConfig();
+  const overrides = await readSchedulerOverrides();
+  return SchedulerSchema.parse({
+    ...fallback,
+    ...overrides,
+    core: {
+      ...fallback.core,
+      ...(overrides.core ?? {}),
+    },
+  });
+}
+
+/** Persists only explicit overrides so profile-derived defaults keep following the profile. */
+async function saveSchedulerOverrides(update: z.infer<typeof SchedulerConfigUpdateSchema>): Promise<void> {
+  const overrides = { ...(await readSchedulerOverrides()), ...update };
   await mkdir(dirname(SCHEDULER_CONFIG_PATH), { recursive: true });
-  await writeFile(SCHEDULER_CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
+  await writeFile(SCHEDULER_CONFIG_PATH, `${JSON.stringify(overrides, null, 2)}\n`, "utf-8");
 }
 
 function getHourForTimezone(date: Date, timezone: string): number {
@@ -263,7 +285,7 @@ function jsonResponse(payload: unknown) {
 function writeHttpJson(res: any, statusCode: number, payload: unknown) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
   if (process.env.HTTP_ALLOWED_ORIGIN) headers["Access-Control-Allow-Origin"] = process.env.HTTP_ALLOWED_ORIGIN;
@@ -583,6 +605,8 @@ async function discoverJobsFromLever(company: string, companyLabel: string | und
 }
 
 async function runBatchEvaluation(jobs: z.infer<typeof JobEvaluationSchema>[], continueOnError = true) {
+  // Fail the whole batch up front instead of recording the same error once per job.
+  await assertProfileConfigured();
   const results: Array<{
     index: number;
     ok: boolean;
@@ -636,28 +660,47 @@ async function runBatchEvaluation(jobs: z.infer<typeof JobEvaluationSchema>[], c
   };
 }
 
-async function discoverJobsFromRemotive(search: string, limit: number) {
-  const url = new URL("https://remotive.com/api/remote-jobs");
-  url.searchParams.set("search", search);
+type RemotiveJob = {
+  id?: number;
+  title?: string;
+  company_name?: string;
+  url?: string;
+  candidate_required_location?: string;
+  salary?: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
+};
 
-  const response = await fetch(url.toString());
-  if (!response.ok) {
-    throw new Error(`Remotive API respondio con estado ${response.status}`);
+async function discoverJobsFromRemotive(search: string, limit: number) {
+  const terms = splitSearchTerms(search);
+  if (terms.length === 0) {
+    throw new Error("La busqueda de Remotive necesita al menos un termino.");
   }
 
-  const data = (await response.json()) as {
-    jobs?: Array<{
-      title?: string;
-      company_name?: string;
-      url?: string;
-      candidate_required_location?: string;
-      salary?: string;
-      description?: string;
-      category?: string;
-    }>;
-  };
+  const seen = new Set<string>();
+  const found: RemotiveJob[] = [];
+  for (const term of terms) {
+    const url = new URL("https://remotive.com/api/remote-jobs");
+    url.searchParams.set("search", term);
 
-  const jobs = (data.jobs ?? []).slice(0, limit).map((job) => {
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      throw new Error(`Remotive API respondio con estado ${response.status}`);
+    }
+
+    const data = (await response.json()) as { jobs?: RemotiveJob[] };
+    for (const job of data.jobs ?? []) {
+      const key = String(job.id ?? job.url ?? `${job.company_name}|${job.title}`);
+      if (seen.has(key)) continue;
+      // The API ignores `search` today; without this filter every query returns the same unrelated feed.
+      if (!matchesSearchTerm([job.title, job.category, ...(job.tags ?? [])].join(" "), term)) continue;
+      seen.add(key);
+      found.push(job);
+    }
+  }
+
+  const jobs = found.slice(0, limit).map((job) => {
     const descriptionText = stripHtmlTags(job.description ?? "");
     const compactDescription = descriptionText.length > 1200
       ? `${descriptionText.slice(0, 1200)}...`
@@ -679,6 +722,8 @@ async function discoverJobsFromRemotive(search: string, limit: number) {
 }
 
 async function executeCoreDiscoveryImport(parsed: z.infer<typeof CoreDiscoverySchema>) {
+  // Checked before discovery so no external source is queried for a fictional candidate.
+  await assertProfileConfigured();
   const discoveryItems: Array<{
     title: string;
     company: string;
@@ -693,7 +738,7 @@ async function executeCoreDiscoveryImport(parsed: z.infer<typeof CoreDiscoverySc
 
   if (parsed.remotive) {
     try {
-      const remotiveItems = await discoverJobsFromRemotive(parsed.remotive.search, parsed.remotive.limit);
+      const remotiveItems = await discoverJobsFromRemotive(await resolveSearch(parsed.remotive.search), parsed.remotive.limit);
       discoveryItems.push(...remotiveItems);
       sourceSummaries.remotive = { total: remotiveItems.length, ok: true };
     } catch (error) {
@@ -962,9 +1007,19 @@ function startSchedulerLoop() {
   }, 60 * 1000);
 }
 
+/** Generic fallback bullets taken from the user's own profile, never from a fixed role. */
+function profileHighlights(profile: Profile): string[] {
+  const competencies = Object.entries(profile.coreCompetencies)
+    .filter(([, items]) => items.length > 0)
+    .slice(0, 2)
+    .map(([category, items]) => `${category}: ${items.slice(0, 3).join(", ")}`);
+  return [profile.headline, ...competencies];
+}
+
 function buildEmailDraft(
   item: Awaited<ReturnType<typeof obtenerOfertaPorId>>,
-  input: z.infer<typeof PrepareEmailSchema>
+  input: z.infer<typeof PrepareEmailSchema>,
+  profile: Profile
 ) {
   if (!item) {
     throw new Error("Vacante no encontrada");
@@ -973,7 +1028,7 @@ function buildEmailDraft(
   const strongPoints = item.evaluacion?.strong_points_to_highlight ?? [];
   const bulletSection = strongPoints.length > 0
     ? strongPoints.map((point) => `- ${point}`).join("\n")
-    : "- Experiencia en arquitectura y backend de nivel senior.\n- Liderazgo tecnico y foco en calidad de entrega.";
+    : profileHighlights(profile).map((point) => `- ${point}`).join("\n");
 
   const to = input.to ?? item.recruiterEmail;
   if (!to) {
@@ -1008,7 +1063,8 @@ function buildEmailDraft(
 
 function buildApplicationPack(
   item: Awaited<ReturnType<typeof obtenerOfertaPorId>>,
-  input: z.infer<typeof ApplicationPackSchema>
+  input: z.infer<typeof ApplicationPackSchema>,
+  profile: Profile
 ) {
   if (!item) {
     throw new Error("Vacante no encontrada");
@@ -1016,19 +1072,20 @@ function buildApplicationPack(
 
   const requisitos = item.requisitos ?? [];
   const excluyentes = item.excluyentes ?? [];
+  const highlights = profileHighlights(profile);
   const intro = `Postulacion sugerida para ${item.company ?? "empresa"}`;
   const textoSugerido = [
     `${intro}`,
     "",
     `Hola ${item.company ?? "equipo de seleccion"},`,
     "",
-    `Me interesa esta vacante (${item.applyUrl ?? item.jobUrl ?? "sin URL"}) y considero que puedo aportar valor rapido en backend/arquitectura.`,
+    `Me interesa esta vacante (${item.applyUrl ?? item.jobUrl ?? "sin URL"}) y considero que mi perfil (${profile.headline}) puede aportar valor rapido.`,
     "",
     "Alineacion con requisitos:",
-    ...(requisitos.length > 0 ? requisitos.slice(0, 5).map((r) => `- ${r}`) : ["- Experiencia en arquitectura y delivery de software enterprise."]),
+    ...(requisitos.length > 0 ? requisitos.slice(0, 5).map((r) => `- ${r}`) : highlights.map((h) => `- ${h}`)),
     "",
     "Puntos excluyentes cubiertos:",
-    ...(excluyentes.length > 0 ? excluyentes.slice(0, 5).map((r) => `- ${r}`) : ["- Disponibilidad inmediata y seniority tecnico/lead."]),
+    ...(excluyentes.length > 0 ? excluyentes.slice(0, 5).map((r) => `- ${r}`) : ["- (completar segun el aviso)"]),
     "",
     `Portfolio: ${input.portfolioUrl}`,
     "",
@@ -1059,7 +1116,7 @@ async function parseJsonBody(req: any): Promise<unknown> {
 }
 
 async function evaluarOferta(input: z.infer<typeof JobEvaluationSchema>) {
-  const profile = await loadProfile();
+  const profile = await assertProfileConfigured();
   const systemPrompt = buildEvaluatorPrompt(profile);
   const promptConsolidado = `${systemPrompt}
     
@@ -1075,30 +1132,7 @@ Por favor, ejecuta el análisis estructural estricto basándote en el perfil del
 
   console.error(`Iniciando peticion a Ollama local usando el modelo: ${input.ollamaModel}...`);
 
-  const ollamaResponse = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: input.ollamaModel,
-      prompt: promptConsolidado,
-      stream: false,
-      format: "json",
-    }),
-  });
-
-  if (!ollamaResponse.ok) {
-    throw new Error(`Ollama API respondio con estado: ${ollamaResponse.status}`);
-  }
-
-  const ollamaData = (await ollamaResponse.json()) as { response?: string };
-
-  if (!ollamaData.response || typeof ollamaData.response !== "string") {
-    throw new Error("Ollama no devolvio una respuesta JSON valida en el campo response.");
-  }
-
-  const parsedEvaluation = EvaluationResultSchema.parse(JSON.parse(ollamaData.response));
+  const parsedEvaluation = EvaluationResultSchema.parse(await generateJson(input.ollamaModel, promptConsolidado));
   let registroPersistido: unknown = null;
 
   if (input.persistResult) {
@@ -1341,7 +1375,39 @@ const httpServer = createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && path === "/health") {
-      writeHttpJson(res, 200, { ok: true, service: "open-job-hunter", mode: RUNTIME_MODE });
+      // ok reflects the HTTP backend; ollama tells the UI whether evaluations can actually run.
+      // An unreadable profile is reported, not raised, so the backend still looks alive.
+      const [ollama, profileStatus] = await Promise.all([
+        checkOllama(),
+        loadProfile().then(
+          (profile) => ({ profileConfigured: !isPlaceholderProfile(profile) }),
+          (error) => ({ profileConfigured: false, profileError: error instanceof Error ? error.message : String(error) })
+        ),
+      ]);
+      writeHttpJson(res, 200, {
+        ok: true,
+        service: "open-job-hunter",
+        mode: RUNTIME_MODE,
+        ollama,
+        ...profileStatus,
+      });
+      return;
+    }
+
+    if (req.method === "GET" && path === "/api/profile") {
+      const { profile, path: profilePath } = await loadProfileWithSource();
+      writeHttpJson(res, 200, {
+        ok: true,
+        profile,
+        isPlaceholder: isPlaceholderProfile(profile),
+        isExampleFile: profilePath.endsWith("profile.example.json"),
+      });
+      return;
+    }
+
+    if (req.method === "PUT" && path === "/api/profile") {
+      const profile = await saveProfile(await parseJsonBody(req));
+      writeHttpJson(res, 200, { ok: true, profile, isPlaceholder: isPlaceholderProfile(profile) });
       return;
     }
 
@@ -1515,7 +1581,7 @@ const httpServer = createServer(async (req, res) => {
         limit: url.searchParams.get("limit") ? Number(url.searchParams.get("limit")) : undefined,
       });
 
-      const jobs = await discoverJobsFromRemotive(parsed.search, parsed.limit);
+      const jobs = await discoverJobsFromRemotive(await resolveSearch(parsed.search), parsed.limit);
       writeHttpJson(res, 200, {
         ok: true,
         source: "remotive",
@@ -1591,13 +1657,8 @@ const httpServer = createServer(async (req, res) => {
     if ((req.method === "PATCH" || req.method === "POST") && path === "/api/scheduler/config") {
       const body = await parseJsonBody(req);
       const parsed = SchedulerConfigUpdateSchema.parse(body);
-      const current = await loadSchedulerConfig();
-      const nextConfig: SchedulerConfig = {
-        ...current,
-        ...parsed,
-      };
-
-      await saveSchedulerConfig(nextConfig);
+      await saveSchedulerOverrides(parsed);
+      const nextConfig = await loadSchedulerConfig();
       writeHttpJson(res, 200, {
         ok: true,
         config: {
@@ -1617,7 +1678,7 @@ const httpServer = createServer(async (req, res) => {
     if (req.method === "POST" && path === "/api/discovery/remotive/import") {
       const body = await parseJsonBody(req);
       const parsed = JobDiscoverySchema.parse(body);
-      const jobs = await discoverJobsFromRemotive(parsed.search, parsed.limit);
+      const jobs = await discoverJobsFromRemotive(await resolveSearch(parsed.search), parsed.limit);
 
       const payload = {
         jobs: jobs.map((job) => ({
@@ -1691,7 +1752,7 @@ const httpServer = createServer(async (req, res) => {
         return;
       }
 
-      const draft = buildEmailDraft(item, parsed);
+      const draft = buildEmailDraft(item, parsed, await loadProfile());
 
       if (parsed.markAsPostulada) {
         await actualizarEstadoOferta(id, "postulada");
@@ -1739,7 +1800,7 @@ const httpServer = createServer(async (req, res) => {
       }
 
       const currentItem = item.jobUrl ? (await enrichOfferFromUrl(item)).item ?? item : item;
-      const pack = buildApplicationPack(currentItem, parsed);
+      const pack = buildApplicationPack(currentItem, parsed, await loadProfile());
 
       if (parsed.markAsPostulada) {
         await actualizarEstadoOferta(id, "postulada");
@@ -1757,7 +1818,10 @@ const httpServer = createServer(async (req, res) => {
     writeHttpJson(res, 404, { ok: false, error: "Endpoint no encontrado" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error no controlado";
-    writeHttpJson(res, 500, { ok: false, error: message });
+    const status = error instanceof OllamaUnavailableError || error instanceof ProfileNotConfiguredError
+      ? error.statusCode
+      : error instanceof z.ZodError ? 400 : 500;
+    writeHttpJson(res, status, { ok: false, error: message });
   }
 });
 

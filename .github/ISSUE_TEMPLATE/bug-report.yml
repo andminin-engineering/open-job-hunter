@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem that is not a security vulnerability.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include CV contents, job descriptions, credentials or other private data. Report vulnerabilities through the private Security link.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and edition
+      placeholder: Windows 11, portable edition
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open...
+        2. Select...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Privacy-safe diagnostics
+      description: Paste relevant doctor output after removing usernames and local paths.

@@ -1,0 +1,92 @@
+name: Beta feedback
+description: Share a privacy-safe report after trying Open Job Hunter.
+title: "[Beta feedback]: "
+labels: ["beta-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing Open Job Hunter. Do not include your CV, job-description text, email address, phone number, API keys or other personal/confidential information.
+  - type: input
+    id: version
+    attributes:
+      label: Open Job Hunter version
+      placeholder: v1.1.0-beta.1
+    validations:
+      required: true
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition
+      options:
+        - Windows installer
+        - Windows portable
+        - Source / npm
+        - Docker
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, approximate RAM and Ollama model. Do not include usernames or device IDs.
+      placeholder: Windows 11, 16 GB RAM, qwen2.5:7b
+    validations:
+      required: true
+  - type: input
+    id: profession
+    attributes:
+      label: Profession or target role
+      placeholder: Product designer
+    validations:
+      required: true
+  - type: checkboxes
+    id: flows
+    attributes:
+      label: Flows tested
+      options:
+        - label: I completed my profile
+        - label: I checked local AI readiness
+        - label: I searched for offers
+        - label: I evaluated an offer
+        - label: I saved or moved an application
+        - label: I closed and reopened the application
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked well?
+    validations:
+      required: true
+  - type: textarea
+    id: confusing
+    attributes:
+      label: What was confusing or failed?
+      description: Include exact error messages when possible, without personal data.
+  - type: dropdown
+    id: representative
+    attributes:
+      label: Did the evaluation represent your profile fairly?
+      options:
+        - Yes
+        - Partially
+        - No
+        - I could not complete an evaluation
+    validations:
+      required: true
+  - type: dropdown
+    id: recommend
+    attributes:
+      label: Would you recommend trying Open Job Hunter?
+      options:
+        - Yes
+        - Maybe
+        - No
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I checked that this report contains no personal, confidential or job-application data.
+          required: true

@@ -11,7 +11,7 @@ import { renderCompetencies } from "./profile.js";
 export function buildEvaluatorPrompt(profile: Profile): string {
   const seniority = profile.seniorityYears
     ? `${profile.seniorityYears}+ years of experience`
-    : "senior-level experience";
+    : "experience level not specified";
 
   const languages =
     profile.languages.length > 0
@@ -30,7 +30,7 @@ export function buildEvaluatorPrompt(profile: Profile): string {
     ? `Narrative strategy focused on mitigating the detected risks, leveraging the public portfolio at ${profile.portfolioUrl}.`
     : "Narrative strategy focused on mitigating the detected risks using the candidate's strongest, most relevant experience.";
 
-  return `Role: Senior Enterprise Technical Screener & IT Architectural Matcher
+  return `Role: Technical Recruiter & Job-Fit Screener
 Context: You are evaluating job offers for ${profile.fullName}, ${profile.headline}, with ${seniority}.
 
 [CANDIDATE CONTEXT - CORE COMPETENCIES]
@@ -44,7 +44,7 @@ ${portfolioLine}
 ${profile.summary}
 
 [EVALUATION INSTRUCTIONS]
-Analyze the provided job description and contrast it strictly against the profile above. Your goal is to determine the real viability of applying and to build the narrative strategy, returned as JSON.
+Analyze the provided job description and contrast it strictly against the profile above. Judge fit only from the candidate's actual headline, competencies and summary: do not assume a role, seniority or specialty the profile does not state. Your goal is to determine the real viability of applying and to build the narrative strategy, returned as JSON.
 
 You must respond ONLY with a flat JSON object, with no Markdown code fences and no additional explanation:
 {
