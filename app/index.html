@@ -116,8 +116,8 @@
     Podés seguir organizando tus postulaciones mientras tanto.
   </div>
   <div class="banner-warn" id="profileBanner">
-    <strong id="profileBannerTitle">Todavía estás usando el perfil de ejemplo.</strong>
-    <span id="profileBannerMessage">Las evaluaciones comparan cada aviso con tu perfil: completalo en</span>
+    <strong id="profileBannerTitle">Completá tu perfil antes de evaluar vacantes.</strong>
+    <span id="profileBannerMessage">Las evaluaciones se habilitan cuando guardes tus datos en</span>
     <a href="#" id="goProfile">👤 Mi perfil</a><span id="profileBannerSuffix"> para obtener resultados reales.</span>
   </div>
 
@@ -180,25 +180,30 @@
       <form id="profileForm">
         <div class="grid two-col">
           <div class="field"><label for="pName">Nombre completo</label><input id="pName" required minlength="2" /></div>
-          <div class="field"><label for="pHeadline">Título profesional</label><input id="pHeadline" required minlength="2" placeholder="Ej: Diseñadora UX/UI Senior" /></div>
+          <div class="field"><label for="pHeadline">Título profesional</label><input id="pHeadline" required minlength="2" /><div class="hint">Ej.: analista funcional, diseñadora UX o auxiliar administrativo.</div></div>
           <div class="field"><label for="pYears">Años de experiencia</label><input id="pYears" type="number" min="0" max="60" /></div>
           <div class="field"><label for="pSalary">Pretensión salarial (USD/mes)</label><input id="pSalary" type="number" min="1" /></div>
           <div class="field"><label for="pPortfolio">Portfolio / LinkedIn</label><input id="pPortfolio" type="url" placeholder="https://…" /></div>
-          <div class="field"><label for="pLocations">Ubicación / modalidad</label><input id="pLocations" placeholder="Remoto, Argentina" /></div>
+          <div class="field"><label for="pLocations">Ubicación / modalidad</label><input id="pLocations" /><div class="hint">Ej.: remoto, Buenos Aires.</div></div>
         </div>
-        <div class="field"><label for="pSummary">Resumen</label><textarea id="pSummary" required minlength="10" placeholder="2 o 3 frases sobre quién sos y qué problemas resolvés mejor."></textarea></div>
+        <div class="field"><label for="pSummary">Resumen</label><textarea id="pSummary" required minlength="10"></textarea><div class="hint">En 2 o 3 frases, contá tu experiencia, tus fortalezas y el trabajo que buscás.</div></div>
         <div class="field">
           <label for="pSkills">Competencias</label>
-          <textarea id="pSkills" placeholder="herramientas: Figma, Miro&#10;metodologías: Design Thinking, Scrum"></textarea>
-          <div class="hint">Una categoría por línea, con el formato <code>categoría: habilidad, habilidad</code>.</div>
+          <textarea id="pSkills"></textarea>
+          <div class="hint">Una categoría por línea. Ej.: <code>análisis: relevamiento de requisitos, historias de usuario</code>.</div>
         </div>
         <div class="field">
-          <label for="pLanguages">Idiomas</label>
-          <textarea id="pLanguages" style="min-height:70px" placeholder="Español: Nativo&#10;Inglés: B2"></textarea>
-          <div class="hint">Uno por línea, con el formato <code>idioma: nivel</code>.</div>
+          <label for="pLanguages">Idiomas que dominás</label>
+          <textarea id="pLanguages" style="min-height:70px"></textarea>
+          <div class="hint">Uno por línea. Ej.: <code>Español: nativo</code>. Esto describe tus conocimientos, no el idioma de la evaluación.</div>
+        </div>
+        <div class="field">
+          <label for="pResponseLanguage">Idioma de las respuestas</label>
+          <select id="pResponseLanguage"><option value="es">Español</option><option value="en">English</option></select>
+          <div class="hint">Los resultados de la IA se redactarán en este idioma.</div>
         </div>
         <div class="grid two-col">
-          <div class="field"><label for="pKeywords">Puestos que buscás</label><input id="pKeywords" placeholder="Ej: diseñador UX, product designer" /><div class="hint">Separados por comas. Se usan en «Buscar ofertas».</div></div>
+          <div class="field"><label for="pKeywords">Puestos que buscás</label><input id="pKeywords" /><div class="hint">Separados por comas. Ej.: analista funcional, consultor de procesos. Se usan en «Buscar ofertas».</div></div>
           <div class="field"><label for="pMinScore">Compatibilidad mínima para postular (%)</label><input id="pMinScore" type="number" min="0" max="100" /></div>
         </div>
         <button class="btn" type="submit" id="profileBtn" disabled>Guardar mi perfil</button>
@@ -284,13 +289,13 @@ async function checkHealth() {
   $('aiHint').textContent = aiHint;
   const showProfileBanner = online && health && (health.profileConfigured === false || profileErrorHint);
   $('profileBanner').style.display = showProfileBanner ? 'block' : 'none';
-  $('profileBannerTitle').textContent = profileErrorHint ? 'No se pudo leer tu perfil.' : 'Todavía estás usando el perfil de ejemplo.';
+  $('profileBannerTitle').textContent = profileErrorHint ? 'No se pudo leer tu perfil.' : 'Completá tu perfil antes de evaluar vacantes.';
   if (profileErrorHint) {
     $('profileBannerMessage').textContent = `${profileErrorHint} Corregí o eliminá el archivo de perfil para volver a configurarlo; la aplicación no lo sobrescribirá.`;
     $('goProfile').style.display = 'none';
     $('profileBannerSuffix').style.display = 'none';
   } else {
-    $('profileBannerMessage').textContent = 'Las evaluaciones comparan cada aviso con tu perfil: completalo en';
+    $('profileBannerMessage').textContent = 'Las evaluaciones se habilitan cuando guardes tus datos en';
     $('goProfile').style.display = '';
     $('profileBannerSuffix').style.display = '';
   }
@@ -433,6 +438,7 @@ function fillProfileForm(p) {
   $('pSummary').value = p.summary || '';
   $('pSkills').value = Object.entries(p.coreCompetencies || {}).map(([k, v]) => k + ': ' + v.join(', ')).join('\n');
   $('pLanguages').value = (p.languages || []).map(l => l.language + ': ' + l.level).join('\n');
+  $('pResponseLanguage').value = p.responseLanguage === 'en' ? 'en' : 'es';
   const search = p.search || {};
   $('pKeywords').value = (search.boards && search.boards.remotive && search.boards.remotive.search) || search.keywords || '';
   $('pMinScore').value = search.minScoreToApply ?? 70;
@@ -447,8 +453,10 @@ async function loadProfileForm() {
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error(data.error || 'no se pudo leer el perfil');
     loadedProfile = data.profile;
-    fillProfileForm(data.profile);
-    $('profileStatus').textContent = '';
+    fillProfileForm(data.isPlaceholder ? {} : data.profile);
+    $('profileStatus').textContent = data.isPlaceholder
+      ? 'Completá y guardá tu perfil para habilitar las evaluaciones.'
+      : '';
     $('profileBtn').disabled = false;
     // Example data must never become the search term without the user choosing it.
     if (!data.isPlaceholder && !$('qSearch').value) $('qSearch').value = $('pKeywords').value;
@@ -488,6 +496,7 @@ $('profileForm').addEventListener('submit', async (ev) => {
       const i = line.indexOf(':');
       return i > 0 ? { language: line.slice(0, i).trim(), level: line.slice(i + 1).trim() } : { language: line, level: '' };
     }),
+    responseLanguage: $('pResponseLanguage').value,
     search: {
       keywords,
       minScoreToApply: numberOrUndefined($('pMinScore').value) ?? 70,
@@ -504,8 +513,10 @@ $('profileForm').addEventListener('submit', async (ev) => {
     if (!data.ok) throw new Error(data.error || 'no se pudo guardar');
     loadedProfile = data.profile;
     $('qSearch').value = keywords;
-    $('profileStatus').textContent = 'Perfil guardado ✅';
-    if (data.isPlaceholder) toast('Cambiá «Your Name» por tu nombre para usar tu propio perfil.');
+    $('profileStatus').textContent = data.isPlaceholder
+      ? 'Reemplazá el nombre de ejemplo para habilitar las evaluaciones.'
+      : 'Perfil guardado ✅';
+    if (data.isPlaceholder) toast('Reemplazá el nombre de ejemplo por el tuyo.');
     checkHealth();
   } catch (e) { $('profileStatus').textContent = ''; toast('Error: ' + e.message); }
   finally { $('profileBtn').disabled = loadedProfile === null; }

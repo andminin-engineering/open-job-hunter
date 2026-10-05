@@ -98,7 +98,7 @@ Run `npm run doctor` after building to check paths, local data access, profile s
 
 ## Configure your profile
 
-This is the heart of the tool. The easiest way is the **Mi perfil** tab of the web interface, which saves to `config/profile.json` (or `PROFILE_PATH`). Until you replace the example name, the dashboard warns that evaluations still use the example profile. You can also copy the example and edit it by hand:
+This is the heart of the tool. The easiest way is the **Mi perfil** tab of the web interface, which starts with empty fields and saves to `config/profile.json` (or `PROFILE_PATH`). Evaluation stays blocked until you save your own profile. The **Idioma de las respuestas** setting controls the language of AI feedback; **Idiomas que dominás** describes your language skills. You can also copy the example and edit it by hand:
 
 ```jsonc
 {
