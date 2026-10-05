@@ -121,6 +121,8 @@ This is the heart of the tool. The easiest way is the **Mi perfil** tab of the w
 
 The evaluator prompt is generated from this file, so the more precise your competencies and summary, the sharper the scoring.
 
+In **Mis postulaciones**, each active stage has its own scrollable list. The visible **Ofertas**, **Descartadas y rechazadas**, and **Sin evaluar** buttons open the remaining stages. Search and sorting cover the full saved pipeline, while **Ver más** loads older vacancies in pages; the registered-vacancy counter reports the full total, not only the current page.
+
 ## Use as an MCP server
 
 Point any MCP client at the built server. Example for Claude Desktop / Claude Code (`mcp` config):
@@ -155,7 +157,7 @@ Point any MCP client at the built server. Example for Claude Desktop / Claude Co
 | `GET` | `/api/discovery/remotive` | Discover jobs from Remotive. |
 | `GET` | `/api/discovery/greenhouse` | Discover jobs from a Greenhouse board. |
 | `GET` | `/api/discovery/lever` | Discover jobs from a Lever board. |
-| `GET` | `/api/pipeline` | Read the pipeline. |
+| `GET` | `/api/pipeline` | Read a pipeline page; supports state filters, search, sorting and `offset`. Returns filtered `total` and unfiltered `allTotal`. |
 | `POST` | `/api/scheduler/run-now` | Trigger a discovery + digest cycle. |
 
 ## Privacy

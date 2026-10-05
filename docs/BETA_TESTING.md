@@ -19,7 +19,7 @@ Unsigned beta builds may trigger Windows SmartScreen. A hash and provenance esta
 4. Search for a role relevant to your profession.
 5. Preview results before selecting **Buscar, evaluar y guardar**.
 6. Add one vacancy manually and review the score, strengths and risks critically. Check that the narrative appears in your selected response language.
-7. Move a saved application to another pipeline stage.
+7. Move a saved application to another pipeline stage. In **Mis postulaciones**, try the search, ordering and **Ofertas** / **Descartadas y rechazadas** views; if a stage has many vacancies, use its own scroll and **Ver más**.
 8. Close and reopen the application; confirm that your profile and pipeline remain available.
 
 Source installations can run `npm run doctor` for a local diagnostic. Its output replaces the project location, your home directory and `Users/<name>` or `home/<name>` path segments with placeholders; still review it before pasting it into an issue. Warnings about an example profile or missing Ollama explain optional setup that is still incomplete; `ERROR` entries indicate a broken installation.

@@ -197,6 +197,70 @@ try {
   const healthAfterSave = await fetch(`http://127.0.0.1:${port}/health`).then((response) => response.json());
   if (healthAfterSave.profileConfigured !== true) throw new Error("Healthcheck no reflejo el perfil guardado");
 
+  const pipelineRows = Array.from({ length: 225 }, (_, index) => ({
+    id: `runtime-offer-${String(index).padStart(3, "0")}`,
+    oferta: `Vacante de analista funcional número ${index}`,
+    sourcePlatform: "runtime-test",
+    company: index === 219 ? "Empresa Única" : `Empresa ${String(index).padStart(3, "0")}`,
+    estado: index < 220 ? "evaluada" : ["oferta", "descartada", "rechazada", "nueva", "postulada"][index - 220],
+    evaluacion: index < 220 ? {
+      match_score: index % 100,
+      apply: true,
+      detected_risks: [],
+      strong_points_to_highlight: [],
+      custom_angle: "Prueba",
+    } : undefined,
+    feedbackHistorial: [],
+    fechaProcesado: new Date(1_760_000_000_000 + index * 1000).toISOString(),
+    fechaActualizacion: new Date(1_760_000_000_000 + index * 1000).toISOString(),
+  }));
+  const seededDatabase = `${JSON.stringify(pipelineRows, null, 2)}\n`;
+  const runtimeDatabasePath = join(dataDir, "db.json");
+  await writeFile(runtimeDatabasePath, seededDatabase, "utf-8");
+  const getPipeline = async (query) => {
+    const response = await fetch(`http://127.0.0.1:${port}/api/pipeline?${query}`);
+    return { status: response.status, payload: await response.json() };
+  };
+  const firstPage = await getPipeline("estado=evaluada&limit=25&offset=0");
+  const lastPage = await getPipeline("estado=evaluada&limit=25&offset=200");
+  if (firstPage.status !== 200 || firstPage.payload.total !== 220 || firstPage.payload.allTotal !== 225
+    || firstPage.payload.items.length !== 25 || firstPage.payload.hasMore !== true
+    || lastPage.payload.items.length !== 20 || lastPage.payload.hasMore !== false
+    || lastPage.payload.total !== 220 || lastPage.payload.items.at(-1)?.id !== "runtime-offer-000") {
+    throw new Error("Pipeline no pagino correctamente las vacantes posteriores al limite anterior de 200");
+  }
+  const grouped = await getPipeline("estados=descartada,rechazada&limit=25");
+  if (grouped.payload.total !== 2 || grouped.payload.allTotal !== 225
+    || !grouped.payload.items.some((item) => item.estado === "rechazada")
+    || !grouped.payload.items.some((item) => item.estado === "descartada")) {
+    throw new Error("Pipeline no agrupo descartadas y rechazadas con sus totales reales");
+  }
+  const unreviewed = await getPipeline("estado=nueva");
+  if (unreviewed.payload.total !== 1 || unreviewed.payload.items[0]?.estado !== "nueva") {
+    throw new Error("Pipeline oculto vacantes nuevas sin evaluar");
+  }
+  const search = await getPipeline("estado=evaluada&q=empresa%20unica");
+  if (search.payload.total !== 1 || search.payload.items[0]?.company !== "Empresa Única"
+    || search.payload.allTotal !== 225) {
+    throw new Error("Pipeline no busco sobre todas las vacantes o altero el total global");
+  }
+  const byScore = await getPipeline("estado=evaluada&sort=score_desc&limit=25");
+  if (byScore.payload.items.length !== 25 || byScore.payload.items.some((item, index, items) =>
+    index > 0 && item.evaluacion.match_score > items[index - 1].evaluacion.match_score)) {
+    throw new Error("Pipeline no ordeno por compatibilidad descendente");
+  }
+  const byCompany = await getPipeline("estado=evaluada&sort=company_asc&limit=1");
+  if (byCompany.payload.items[0]?.company !== "Empresa 000") {
+    throw new Error("Pipeline no ordeno por empresa ascendente");
+  }
+  for (const query of ["offset=-1", "offset=1.5", "estados=desconocida", "estados=", "sort=otro", "estado=evaluada&estados=oferta"]) {
+    const invalid = await getPipeline(query);
+    if (invalid.status !== 400) throw new Error(`Pipeline acepto el parametro invalido ${query}: ${invalid.status}`);
+  }
+  if (await readFile(runtimeDatabasePath, "utf-8") !== seededDatabase) {
+    throw new Error("Las consultas del pipeline modificaron la base de datos");
+  }
+
   const evaluationWithoutOllama = await fetch(`http://127.0.0.1:${port}/api/evaluar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -263,6 +327,7 @@ try {
   console.log("OK  HTTP y MCP rechazaron evaluar con el perfil de ejemplo");
   console.log("OK  un perfil invalido fue rechazado sin escribirse");
   console.log("OK  perfil HTTP se guardo, persistio y recargo sin reiniciar");
+  console.log("OK  pipeline pagino mas de 200 vacantes con totales, filtros, orden y estados completos");
   console.log("OK  healthcheck reporto perfil y Ollama");
   console.log("OK  Ollama ausente produjo un diagnostico HTTP 503");
   console.log("OK  dashboard incluyo escape de contenido y validacion de URLs");
