@@ -306,15 +306,22 @@ function normalizeLimit(limitRaw: string | null): number {
 
 const PipelineSortSchema = z.enum(["updated_desc", "score_desc", "company_asc"]);
 
+// Read-only filter values: legacy states still present in stored rows must be
+// selectable, but they stay out of EstadoPostulacionSchema so writes reject them.
+const PipelineEstadoFiltroSchema = z.union([
+  EstadoPostulacionSchema,
+  z.enum(["aplicada", "entrevista_inicial"]),
+]);
+
 // New pagination/search params are strict (400 on malformed input); `estado`
 // and `limit` keep their historical lenient parsing for existing clients.
 const PipelineQuerySchema = z
   .object({
-    estado: EstadoPostulacionSchema.optional(),
+    estado: PipelineEstadoFiltroSchema.optional(),
     estados: z
       .string()
       .transform((raw) => [...new Set(raw.split(",").map((value) => value.trim()))])
-      .pipe(z.array(EstadoPostulacionSchema).min(1))
+      .pipe(z.array(PipelineEstadoFiltroSchema).min(1))
       .optional(),
     offset: z
       .string()
