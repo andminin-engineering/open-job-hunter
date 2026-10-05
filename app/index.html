@@ -147,8 +147,9 @@
     </div>
     <div class="pipeline-modes" id="pipelineModes" role="group" aria-label="Vistas de postulaciones">
       <button type="button" data-pipeline-view="active" class="active" aria-pressed="true">En curso <span id="activeCount"></span></button>
-      <button type="button" data-pipeline-view="offers" aria-pressed="false">🏆 Ofertas <span id="offersCount"></span></button>
-      <button type="button" data-pipeline-view="discarded" aria-pressed="false">🗂️ Descartadas y rechazadas <span id="discardedCount"></span></button>
+      <button type="button" data-pipeline-view="accepted" aria-pressed="false">🏆 Aceptadas <span id="acceptedCount"></span></button>
+      <button type="button" data-pipeline-view="rejected" aria-pressed="false">⛔ Rechazadas <span id="rejectedCount"></span></button>
+      <button type="button" data-pipeline-view="discarded" aria-pressed="false">🗂️ Descartadas <span id="discardedCount"></span></button>
       <button type="button" data-pipeline-view="new" aria-pressed="false">Sin evaluar <span id="newCount"></span></button>
       <button type="button" data-pipeline-view="legacy" aria-pressed="false">Otros estados <span id="legacyCount"></span></button>
     </div>
@@ -265,12 +266,16 @@ const PIPELINE_LANES = [
   { key: 'postulada', label: '📨 Postuladas', query: 'estado=postulada' },
   { key: 'feedback_recibido', label: '💬 Con respuesta', query: 'estado=feedback_recibido' },
   { key: 'entrevista', label: '🗣️ En entrevista', query: 'estado=entrevista' },
-  { key: 'oferta', label: '🏆 Ofertas', query: 'estado=oferta' },
-  { key: 'descartadas', label: '🗂️ Descartadas y rechazadas', query: 'estados=descartada,rechazada' },
+  { key: 'oferta', label: '🏆 Aceptadas', query: 'estado=oferta' },
+  { key: 'rechazada', label: '⛔ Rechazadas', query: 'estado=rechazada' },
+  { key: 'descartada', label: '🗂️ Descartadas', query: 'estado=descartada' },
   { key: 'nueva', label: 'Sin evaluar', query: 'estado=nueva' },
   { key: 'legacy', label: 'Otros estados', query: 'estados=aplicada,entrevista_inicial' },
 ];
 const PIPELINE_PAGE_SIZE = 25;
+const PIPELINE_VIEW_TO_LANE = {
+  accepted: 'oferta', rejected: 'rechazada', discarded: 'descartada', new: 'nueva', legacy: 'legacy',
+};
 const NEXT_ACTIONS = {
   evaluada:          [['postulada', 'Ya postulé'], ['descartada', 'Descartar']],
   postulada:         [['feedback_recibido', 'Me respondieron'], ['rechazada', 'Me rechazaron']],
@@ -377,8 +382,8 @@ let pipelineScrollPositions = {};
 let pipelineSearchTimer;
 function visiblePipelineLanes() {
   if (pipelineView === 'active') return PIPELINE_LANES.slice(0, 4);
-  const key = { offers: 'oferta', discarded: 'descartadas', new: 'nueva', legacy: 'legacy' }[pipelineView];
-  return PIPELINE_LANES.filter(lane => lane.key === key);
+  if (!Object.hasOwn(PIPELINE_VIEW_TO_LANE, pipelineView)) return PIPELINE_LANES.slice(0, 4);
+  return PIPELINE_LANES.filter(lane => lane.key === PIPELINE_VIEW_TO_LANE[pipelineView]);
 }
 async function fetchPipelinePage(lane, offset, limit = PIPELINE_PAGE_SIZE, query = pipelineQuery, sort = pipelineSort) {
   const params = new URLSearchParams(lane.query);
@@ -407,13 +412,18 @@ async function fetchPipelineLane(lane, desiredCount, query, sort) {
 function renderPipelineModes() {
   const count = key => pipelineData[key]?.total ?? 0;
   $('activeCount').textContent = `(${PIPELINE_LANES.slice(0, 4).reduce((sum, lane) => sum + count(lane.key), 0)})`;
-  $('offersCount').textContent = `(${count('oferta')})`;
-  $('discardedCount').textContent = `(${count('descartadas')})`;
+  $('acceptedCount').textContent = `(${count('oferta')})`;
+  $('rejectedCount').textContent = `(${count('rechazada')})`;
+  $('discardedCount').textContent = `(${count('descartada')})`;
   $('newCount').textContent = `(${count('nueva')})`;
   $('legacyCount').textContent = `(${count('legacy')})`;
-  $('pipelineViewHint').textContent = pipelineView === 'legacy'
-    ? 'Registros de versiones anteriores. Se muestran sin modificar su estado.'
-    : '';
+  const viewHints = {
+    accepted: 'Vacantes en las que marcaste «¡Recibí oferta!».',
+    rejected: 'Vacantes marcadas con «Me rechazaron» o «No avanzó».',
+    discarded: 'Vacantes que descartaste vos; no incluye rechazos de la empresa.',
+    legacy: 'Registros de versiones anteriores. Se muestran sin modificar su estado.',
+  };
+  $('pipelineViewHint').textContent = Object.hasOwn(viewHints, pipelineView) ? viewHints[pipelineView] : '';
   $('pipelineModes').querySelectorAll('button[data-pipeline-view]').forEach(button => {
     const selected = button.dataset.pipelineView === pipelineView;
     button.classList.toggle('active', selected);
@@ -507,7 +517,9 @@ async function loadMorePipeline(laneKey, button) {
 $('pipelineModes').addEventListener('click', ev => {
   const button = ev.target.closest('button[data-pipeline-view]');
   if (!button) return;
-  pipelineView = button.dataset.pipelineView;
+  const nextView = button.dataset.pipelineView;
+  if (nextView !== 'active' && !Object.hasOwn(PIPELINE_VIEW_TO_LANE, nextView)) return;
+  pipelineView = nextView;
   renderPipelineModes();
   renderPipelineBoard();
 });
@@ -523,7 +535,7 @@ $('board').addEventListener('click', (ev) => {
   const more = ev.target.closest('button[data-load-more]');
   if (more) { void loadMorePipeline(more.dataset.loadMore, more); return; }
   const btn = ev.target.closest('button[data-id]');
-  if (btn) void moveJob(btn.dataset.id, btn.dataset.estado, btn.closest('.col')?.dataset.lane, document.activeElement === btn);
+  if (btn) return moveJob(btn.dataset.id, btn.dataset.estado, btn.closest('.col')?.dataset.lane, document.activeElement === btn);
 });
 async function moveJob(id, estado, laneKey, restoreFocus) {
   try {

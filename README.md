@@ -121,7 +121,7 @@ This is the heart of the tool. The easiest way is the **Mi perfil** tab of the w
 
 The evaluator prompt is generated from this file, so the more precise your competencies and summary, the sharper the scoring.
 
-In **Mis postulaciones**, each active stage has its own scrollable list. The visible **Ofertas**, **Descartadas y rechazadas**, **Sin evaluar**, and **Otros estados** buttons open the remaining stages. **Otros estados** shows records saved by older versions without changing them. Search and sorting cover the full saved pipeline, while **Ver 25 más** loads the next matching page; the registered-vacancy counter reports the full total, not only the current page.
+In **Mis postulaciones**, each active stage has its own scrollable list. The visible **Aceptadas**, **Rechazadas**, **Descartadas**, **Sin evaluar**, and **Otros estados** buttons open the remaining stages. **Aceptadas** displays the existing `oferta` state reached through **¡Recibí oferta!**; this is a display label, not a new stored state or a separate confirmation of formal acceptance. **Rechazadas** and **Descartadas** display their existing states separately. **Otros estados** shows records saved by older versions without changing them. Search and sorting cover the full saved pipeline, while **Ver 25 más** loads the next matching page; the registered-vacancy counter reports the full total, not only the current page.
 
 ### Synthetic functional-analyst dashboard test
 

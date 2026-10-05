@@ -13,10 +13,22 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
   if (!script) throw new Error("No se encontró el script del dashboard");
 
   const elements = new Map<string, ReturnType<typeof makeElement>>();
-  const handlers = new Map<string, (event: unknown) => void>();
+  const handlers = new Map<string, (event: unknown) => unknown>();
   const urls: URL[] = [];
+  const patches: Array<{ id: string; estado: string }> = [];
   const evaluatedTotal = options.evaluatedTotal ?? 105;
   const allTotal = evaluatedTotal + 133;
+  const stateTotals: Record<string, number> = {
+    evaluada: evaluatedTotal,
+    postulada: 15,
+    feedback_recibido: 4,
+    entrevista: 2,
+    oferta: 1,
+    rechazada: 3,
+    descartada: 100,
+    nueva: 0,
+    "aplicada,entrevista_inicial": 8,
+  };
   let activeElement: unknown;
   let focusedAfterLoad = false;
   let releaseLaterPage: (() => void) | undefined;
@@ -40,7 +52,7 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
       querySelectorAll: () => [],
       querySelector: (selector: string) => id === "board" && selector.includes('data-load-more="evaluada"') ? focusTarget : null,
       focus() { activeElement = this; },
-      addEventListener(event: string, handler: (event: unknown) => void) { handlers.set(`${id}:${event}`, handler); },
+      addEventListener(event: string, handler: (event: unknown) => unknown) { handlers.set(`${id}:${event}`, handler); },
     };
   }
 
@@ -49,10 +61,21 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
     return elements.get(id)!;
   }
 
-  const fetch = async (input: string) => {
+  const fetch = async (input: string, init?: { method?: string; body?: string }) => {
     const url = new URL(input);
     if (url.pathname === "/health") return { ok: false };
     if (url.pathname === "/api/metrics/funnel") return { ok: true, json: async () => ({ metrics: {} }) };
+    const move = url.pathname.match(/^\/api\/postulaciones\/([^/]+)\/estado$/);
+    if (move && init?.method === "PATCH") {
+      const id = decodeURIComponent(move[1]);
+      const { estado } = JSON.parse(init.body || "{}") as { estado: string };
+      const previous = id.split("-")[0];
+      if (!(previous in stateTotals) || !(estado in stateTotals)) throw new Error("Estado de prueba desconocido");
+      stateTotals[previous] -= 1;
+      stateTotals[estado] += 1;
+      patches.push({ id, estado });
+      return { ok: true, json: async () => ({ ok: true }) };
+    }
     if (url.pathname !== "/api/pipeline") throw new Error(`Unexpected request: ${input}`);
     urls.push(url);
     const lane = url.searchParams.get("estados") ?? url.searchParams.get("estado");
@@ -65,25 +88,14 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
     if (lane === "evaluada" && offset === 0 && options.holdRefresh && ++evaluatedFirstPageCalls === 2) {
       await new Promise<void>((resolve) => { releaseRefresh = resolve; });
     }
-    const total = query ? (lane === "evaluada" ? 2 : 0) : ({
-      evaluada: evaluatedTotal,
-      postulada: 15,
-      feedback_recibido: 4,
-      entrevista: 2,
-      oferta: 1,
-      "descartada,rechazada": 103,
-      nueva: 0,
-      "aplicada,entrevista_inicial": 8,
-    }[lane ?? ""] ?? 0);
+    const total = query ? (lane === "evaluada" ? 2 : 0) : (stateTotals[lane ?? ""] ?? 0);
     const count = Math.min(limit, Math.max(0, total - offset));
     const items = Array.from({ length: count }, (_, index) => ({
       id: `${lane}-${offset + index}`,
       company: lane === "evaluada" ? "Asana" : "Empresa de prueba",
       oferta: "Analista funcional <img src=x onerror=alert(1)> para procesos",
       sourcePlatform: "test",
-      estado: lane === "descartada,rechazada" ? "rechazada"
-        : lane === "aplicada,entrevista_inicial" ? (index % 2 ? "aplicada" : "entrevista_inicial")
-          : lane,
+      estado: lane === "aplicada,entrevista_inicial" ? (index % 2 ? "aplicada" : "entrevista_inicial") : lane,
       fechaActualizacion: "2026-10-05T12:00:00.000Z",
     }));
     return {
@@ -111,12 +123,22 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
   }) as { loadPipeline: () => Promise<void>; loadMorePipeline: (lane: string, button: { disabled: boolean }) => Promise<void> };
 
   return {
-    element, urls, handlers, load: dashboard.loadPipeline, loadMore: dashboard.loadMorePipeline,
+    element, urls, patches, handlers, load: dashboard.loadPipeline, loadMore: dashboard.loadMorePipeline,
     setActiveElement: (value: unknown) => { activeElement = value; },
     wasFocusRestored: () => focusedAfterLoad,
     releaseLaterPage: () => releaseLaterPage?.(),
     releaseRefresh: () => releaseRefresh?.(),
   };
+}
+
+async function clickInterviewOutcome(page: ReturnType<typeof dashboardWithManyOffers>, estado: string) {
+  const button = {
+    dataset: { id: "entrevista-0", estado },
+    closest: (selector: string) => selector === ".col" ? { dataset: { lane: "entrevista" } } : null,
+  };
+  await page.handlers.get("board:click")!({
+    target: { closest: (selector: string) => selector === "button[data-id]" ? button : null },
+  });
 }
 
 describe("scalable dashboard pipeline", () => {
@@ -128,27 +150,47 @@ describe("scalable dashboard pipeline", () => {
     expect(html.indexOf('id="pipelineModes"')).toBeLessThan(html.indexOf('id="board"'));
   });
 
-  it("shows real totals, four active lanes, and navigates to offers and rejected offers", async () => {
+  it("shows real totals, four active lanes, and separate accepted, rejected and discarded views", async () => {
     const page = dashboardWithManyOffers();
     await page.load();
 
     expect(page.element("kpis").innerHTML).toContain('class="num">238</div>');
     expect(page.element("activeCount").textContent).toBe("(126)");
-    expect(page.element("offersCount").textContent).toBe("(1)");
-    expect(page.element("discardedCount").textContent).toBe("(103)");
+    expect(page.element("acceptedCount").textContent).toBe("(1)");
+    expect(page.element("rejectedCount").textContent).toBe("(3)");
+    expect(page.element("discardedCount").textContent).toBe("(100)");
     expect(page.element("legacyCount").textContent).toBe("(8)");
+    expect(page.urls.some(url => url.searchParams.get("estado") === "rechazada")).toBe(true);
+    expect(page.urls.some(url => url.searchParams.get("estado") === "descartada")).toBe(true);
+    expect(page.urls.some(url => url.searchParams.get("estados") === "descartada,rechazada")).toBe(false);
     expect(page.element("board").innerHTML).toContain("25 de 105");
-    expect(page.element("board").innerHTML).not.toContain("🏆 Ofertas");
+    expect(page.element("board").innerHTML).not.toContain("🏆 Aceptadas");
     expect(page.element("board").innerHTML).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(page.element("board").innerHTML).not.toContain("<img src=x");
 
-    page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "offers" } }) } });
-    expect(page.element("board").innerHTML).toContain("🏆 Ofertas");
+    page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "accepted" } }) } });
+    expect(page.element("board").innerHTML).toContain("🏆 Aceptadas");
     expect(page.element("board").innerHTML).toContain("1 vacante</span>");
+    expect(page.element("pipelineViewHint").textContent).toContain("¡Recibí oferta!");
     expect(page.element("board").innerHTML).not.toContain("✅ Listas para postular");
 
+    page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "rejected" } }) } });
+    expect(page.element("board").innerHTML).toContain("⛔ Rechazadas");
+    expect(page.element("board").innerHTML).toContain("3 vacantes</span>");
+    expect(page.element("board").innerHTML).toContain("3 de 3");
+    expect(page.element("board").innerHTML).not.toContain("Descartada");
+    expect(page.element("pipelineViewHint").textContent).toContain("No avanzó");
+
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "discarded" } }) } });
-    expect(page.element("board").innerHTML).toContain("Rechazada");
+    expect(page.element("board").innerHTML).toContain("🗂️ Descartadas");
+    expect(page.element("board").innerHTML).toContain("100 vacantes</span>");
+    expect(page.element("board").innerHTML).toContain("25 de 100");
+    expect(page.element("board").innerHTML).not.toContain("Rechazada");
+    await page.loadMore("descartada", { disabled: false });
+    expect(page.element("board").innerHTML).toContain("50 de 100");
+
+    page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "offers" } }) } });
+    expect(page.element("board").innerHTML).toContain("🗂️ Descartadas");
 
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "legacy" } }) } });
     expect(page.element("board").innerHTML).toContain("Aplicada (estado anterior)");
@@ -156,6 +198,30 @@ describe("scalable dashboard pipeline", () => {
     expect(page.element("board").innerHTML).not.toContain('data-id=');
     expect(page.element("board").innerHTML).not.toContain('data-estado=');
     expect(page.element("pipelineViewHint").textContent).toContain("sin modificar su estado");
+  });
+
+  it("shows interview outcomes in accepted or rejected without adding stored states", async () => {
+    const accepted = dashboardWithManyOffers();
+    await accepted.load();
+    expect(accepted.element("board").innerHTML).toContain('data-id="entrevista-0" data-estado="oferta">¡Recibí oferta!</button>');
+    await clickInterviewOutcome(accepted, "oferta");
+    expect(accepted.patches).toEqual([{ id: "entrevista-0", estado: "oferta" }]);
+    expect(accepted.element("activeCount").textContent).toBe("(125)");
+    expect(accepted.element("acceptedCount").textContent).toBe("(2)");
+    accepted.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "accepted" } }) } });
+    expect(accepted.element("board").innerHTML).toContain("🏆 Aceptadas");
+    expect(accepted.element("board").innerHTML).toContain("2 vacantes</span>");
+
+    const rejected = dashboardWithManyOffers();
+    await rejected.load();
+    expect(rejected.element("board").innerHTML).toContain('data-id="entrevista-0" data-estado="rechazada">No avanzó</button>');
+    await clickInterviewOutcome(rejected, "rechazada");
+    expect(rejected.patches).toEqual([{ id: "entrevista-0", estado: "rechazada" }]);
+    expect(rejected.element("activeCount").textContent).toBe("(125)");
+    expect(rejected.element("rejectedCount").textContent).toBe("(4)");
+    rejected.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "rejected" } }) } });
+    expect(rejected.element("board").innerHTML).toContain("⛔ Rechazadas");
+    expect(rejected.element("board").innerHTML).toContain("4 vacantes</span>");
   });
 
   it("loads later pages and sends search and sort to the API instead of filtering loaded cards", async () => {
@@ -173,8 +239,8 @@ describe("scalable dashboard pipeline", () => {
     page.element("pipelineSearch").value = "Asana";
     page.element("pipelineSort").value = "score_desc";
     await page.load();
-    expect(page.urls.slice(-8)).toHaveLength(8);
-    for (const url of page.urls.slice(-8)) {
+    expect(page.urls.slice(-9)).toHaveLength(9);
+    for (const url of page.urls.slice(-9)) {
       expect(url.searchParams.get("q")).toBe("Asana");
       expect(url.searchParams.get("sort")).toBe("score_desc");
       expect(url.searchParams.get("limit")).toBe("25");
