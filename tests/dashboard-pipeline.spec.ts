@@ -140,6 +140,7 @@ describe("scalable dashboard pipeline", () => {
 
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "offers" } }) } });
     expect(page.element("board").innerHTML).toContain("🏆 Ofertas");
+    expect(page.element("board").innerHTML).toContain("1 vacante</span>");
     expect(page.element("board").innerHTML).not.toContain("✅ Listas para postular");
 
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "discarded" } }) } });

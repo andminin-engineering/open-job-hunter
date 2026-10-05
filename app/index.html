@@ -423,7 +423,8 @@ function renderPipelineBoard(preserveScroll = true) {
     const data = pipelineData[lane.key] || { items: [], total: 0, hasMore: false };
     const headingId = `lane-heading-${lane.key}`;
     const total = Number(data.total) || 0;
-    return `<div class="col" data-lane="${lane.key}"><h3 id="${headingId}">${esc(lane.label)}<span>${total} vacantes</span></h3>
+    const totalLabel = total === 1 ? 'vacante' : 'vacantes';
+    return `<div class="col" data-lane="${lane.key}"><h3 id="${headingId}">${esc(lane.label)}<span>${total} ${totalLabel}</span></h3>
       <div class="col-scroll" data-lane="${lane.key}" role="region" aria-labelledby="${headingId}" tabindex="0">
         ${data.items.length ? data.items.map(jobCard).join('') : `<div class="empty">${pipelineQuery ? 'Sin resultados para la búsqueda' : 'Nada por aquí todavía'}</div>`}
       </div>
