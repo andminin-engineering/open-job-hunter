@@ -221,6 +221,12 @@ try {
     const response = await fetch(`http://127.0.0.1:${port}/api/pipeline?${query}`);
     return { status: response.status, payload: await response.json() };
   };
+  const defaultPage = await getPipeline("");
+  if (defaultPage.status !== 200 || defaultPage.payload.items.length !== 50
+    || defaultPage.payload.total !== 225 || defaultPage.payload.allTotal !== 225
+    || defaultPage.payload.hasMore !== true) {
+    throw new Error("Pipeline perdio la paginacion predeterminada o no informo el total real");
+  }
   const firstPage = await getPipeline("estado=evaluada&limit=25&offset=0");
   const lastPage = await getPipeline("estado=evaluada&limit=25&offset=200");
   if (firstPage.status !== 200 || firstPage.payload.total !== 220 || firstPage.payload.allTotal !== 225

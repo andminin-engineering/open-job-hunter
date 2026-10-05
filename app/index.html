@@ -71,7 +71,7 @@
   .pipeline-modes button.active { background: var(--brand); border-color: var(--brand); color: #fff; }
   .board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .board.single { grid-template-columns: minmax(0, 1fr); }
-  .col { min-width: 0; height: clamp(320px, calc(100dvh - 330px), 700px); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
+  .col { min-width: 0; height: 560px; height: clamp(320px, calc(100dvh - 330px), 700px); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
   .col h3 { margin: 4px 6px 10px; font-size: .9rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; flex: none; }
   .col-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 1px 3px; }
   .col-scroll:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
@@ -79,7 +79,7 @@
   .col-footer button { border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--brand); padding: 5px 8px; cursor: pointer; }
   .col-footer button:disabled { opacity: .5; cursor: wait; }
   @media (max-width: 1000px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 620px) { .board { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 620px) { .board { grid-template-columns: minmax(0, 1fr); } .col-scroll { overscroll-behavior: auto; } }
   .job {
     background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
     font-size: .88rem; box-shadow: 0 1px 2px rgba(20,30,60,.06);
@@ -366,22 +366,37 @@ let pipelineData = {};
 let pipelineQuery = '';
 let pipelineSort = 'updated_desc';
 let pipelineRequest = 0;
+let pipelineRefreshing = false;
+let pipelineScrollPositions = {};
 let pipelineSearchTimer;
 function visiblePipelineLanes() {
   if (pipelineView === 'active') return PIPELINE_LANES.slice(0, 4);
   const key = { offers: 'oferta', discarded: 'descartadas', new: 'nueva' }[pipelineView];
   return PIPELINE_LANES.filter(lane => lane.key === key);
 }
-async function fetchPipelinePage(lane, offset) {
+async function fetchPipelinePage(lane, offset, limit = PIPELINE_PAGE_SIZE, query = pipelineQuery, sort = pipelineSort) {
   const params = new URLSearchParams(lane.query);
-  params.set('limit', String(PIPELINE_PAGE_SIZE));
+  params.set('limit', String(limit));
   params.set('offset', String(offset));
-  params.set('sort', pipelineSort);
-  if (pipelineQuery) params.set('q', pipelineQuery);
+  params.set('sort', sort);
+  if (query) params.set('q', query);
   const response = await fetch(API + '/api/pipeline?' + params);
-  const data = await response.json();
-  if (!response.ok || !data.ok) throw new Error(data.error || 'no se pudo cargar el tablero');
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.ok) throw new Error(data?.error || `respuesta HTTP ${response.status}`);
   return data;
+}
+async function fetchPipelineLane(lane, desiredCount, query, sort) {
+  const first = await fetchPipelinePage(lane, 0, Math.min(200, desiredCount), query, sort);
+  let page = first;
+  const items = [...first.items];
+  let nextOffset = first.offset + first.items.length;
+  while (page.hasMore && items.length < desiredCount) {
+    page = await fetchPipelinePage(lane, nextOffset, Math.min(200, desiredCount - items.length), query, sort);
+    if (!page.items.length) break;
+    items.push(...page.items);
+    nextOffset = page.offset + page.items.length;
+  }
+  return { ...page, items, nextOffset };
 }
 function renderPipelineModes() {
   const count = key => pipelineData[key]?.total ?? 0;
@@ -395,56 +410,74 @@ function renderPipelineModes() {
     button.setAttribute('aria-pressed', String(selected));
   });
 }
-function renderPipelineBoard() {
+function renderPipelineBoard(preserveScroll = true) {
   const board = $('board');
-  const scrollPositions = Object.fromEntries([...board.querySelectorAll('.col-scroll')].map(el => [el.dataset.lane, el.scrollTop]));
+  if (preserveScroll) {
+    board.querySelectorAll('.col-scroll').forEach(el => { pipelineScrollPositions[el.dataset.lane] = el.scrollTop; });
+  } else {
+    pipelineScrollPositions = {};
+  }
   const lanes = visiblePipelineLanes();
   board.classList.toggle('single', lanes.length === 1);
   board.innerHTML = lanes.map(lane => {
     const data = pipelineData[lane.key] || { items: [], total: 0, hasMore: false };
     const headingId = `lane-heading-${lane.key}`;
-    return `<div class="col" data-lane="${lane.key}"><h3 id="${headingId}">${esc(lane.label)}<span>${data.total}</span></h3>
+    const total = Number(data.total) || 0;
+    return `<div class="col" data-lane="${lane.key}"><h3 id="${headingId}">${esc(lane.label)}<span>${total} vacantes</span></h3>
       <div class="col-scroll" data-lane="${lane.key}" role="region" aria-labelledby="${headingId}" tabindex="0">
-        ${data.items.length ? data.items.map(jobCard).join('') : '<div class="empty">Nada por aquí todavía</div>'}
+        ${data.items.length ? data.items.map(jobCard).join('') : `<div class="empty">${pipelineQuery ? 'Sin resultados para la búsqueda' : 'Nada por aquí todavía'}</div>`}
       </div>
-      <div class="col-footer"><span>${data.items.length} de ${data.total}</span>
+      <div class="col-footer"><span aria-live="polite">${data.items.length} de ${total}</span>
         ${data.hasMore ? `<button type="button" data-load-more="${lane.key}">Ver ${PIPELINE_PAGE_SIZE} más</button>` : ''}
       </div></div>`;
   }).join('');
-  board.querySelectorAll('.col-scroll').forEach(el => { el.scrollTop = scrollPositions[el.dataset.lane] || 0; });
+  board.querySelectorAll('.col-scroll').forEach(el => { el.scrollTop = pipelineScrollPositions[el.dataset.lane] || 0; });
 }
 async function loadPipeline() {
   const requestId = ++pipelineRequest;
-  if (!await checkHealth()) return;
-  if (requestId !== pipelineRequest) return;
-  pipelineQuery = $('pipelineSearch').value.trim();
-  pipelineSort = $('pipelineSort').value;
+  pipelineRefreshing = true;
+  $('board').querySelectorAll('button[data-load-more]').forEach(button => { button.disabled = true; });
   try {
+    if (!await checkHealth() || requestId !== pipelineRequest) return;
+    const query = $('pipelineSearch').value.trim();
+    const sort = $('pipelineSort').value;
+    const filtersChanged = query !== pipelineQuery || sort !== pipelineSort;
+    const desired = Object.fromEntries(PIPELINE_LANES.map(lane => [lane.key,
+      filtersChanged ? PIPELINE_PAGE_SIZE : Math.max(PIPELINE_PAGE_SIZE, pipelineData[lane.key]?.items.length || 0)]));
     const [pages, funnelRes] = await Promise.all([
-      Promise.all(PIPELINE_LANES.map(lane => fetchPipelinePage(lane, 0))),
+      Promise.all(PIPELINE_LANES.map(lane => fetchPipelineLane(lane, desired[lane.key], query, sort))),
       fetch(API + '/api/metrics/funnel').then(r => r.json()),
     ]);
     if (requestId !== pipelineRequest) return;
+    pipelineQuery = query;
+    pipelineSort = sort;
     pipelineData = Object.fromEntries(PIPELINE_LANES.map((lane, index) => [lane.key, pages[index]]));
     const m = funnelRes.metrics || {};
     $('kpis').innerHTML = `
-      <div class="card kpi"><div class="num">${pages[0].allTotal}</div><div class="lbl">Vacantes registradas</div></div>
+      <div class="card kpi"><div class="num">${Number(pages[0].allTotal) || 0}</div><div class="lbl">Vacantes registradas</div></div>
       <div class="card kpi"><div class="num">${m.postulacionesEnviadas ?? 0}</div><div class="lbl">Postulaciones enviadas</div></div>
       <div class="card kpi"><div class="num">${m.feedbackRecibido ?? 0}</div><div class="lbl">Respuestas recibidas</div></div>
       <div class="card kpi"><div class="num">${m.entrevistasConcretadas ?? 0}</div><div class="lbl">Entrevistas logradas</div></div>`;
     renderPipelineModes();
-    renderPipelineBoard();
+    renderPipelineBoard(!filtersChanged);
   } catch (e) { toast('No pude cargar tus postulaciones: ' + e.message); }
+  finally {
+    if (requestId === pipelineRequest) {
+      pipelineRefreshing = false;
+      $('board').querySelectorAll('button[data-load-more]').forEach(button => { button.disabled = false; });
+    }
+  }
 }
 async function loadMorePipeline(laneKey, button) {
   const lane = PIPELINE_LANES.find(item => item.key === laneKey);
   const current = pipelineData[laneKey];
-  if (!lane || !current?.hasMore) return;
+  if (pipelineRefreshing || !lane || !current?.hasMore) return;
   const requestId = pipelineRequest;
+  const restoreFocus = document.activeElement === button;
   button.disabled = true;
   try {
     const next = await fetchPipelinePage(lane, current.nextOffset ?? current.offset + current.items.length);
-    if (requestId !== pipelineRequest) return;
+    if (requestId !== pipelineRequest || pipelineData[laneKey] !== current) return;
     const ids = new Set(current.items.map(item => item.id));
     pipelineData[laneKey] = {
       ...next,
@@ -453,6 +486,11 @@ async function loadMorePipeline(laneKey, button) {
     };
     renderPipelineModes();
     renderPipelineBoard();
+    if (restoreFocus && visiblePipelineLanes().some(item => item.key === laneKey)) {
+      const board = $('board');
+      (board.querySelector(`button[data-load-more="${laneKey}"]`)
+        || board.querySelector(`.col-scroll[data-lane="${laneKey}"]`))?.focus();
+    }
   } catch (e) { button.disabled = false; toast('No pude cargar más vacantes: ' + e.message); }
 }
 $('pipelineModes').addEventListener('click', ev => {
@@ -474,16 +512,18 @@ $('board').addEventListener('click', (ev) => {
   const more = ev.target.closest('button[data-load-more]');
   if (more) { void loadMorePipeline(more.dataset.loadMore, more); return; }
   const btn = ev.target.closest('button[data-id]');
-  if (btn) moveJob(btn.dataset.id, btn.dataset.estado);
+  if (btn) void moveJob(btn.dataset.id, btn.dataset.estado, btn.closest('.col')?.dataset.lane, document.activeElement === btn);
 });
-async function moveJob(id, estado) {
+async function moveJob(id, estado, laneKey, restoreFocus) {
   try {
     const r = await fetch(`${API}/api/postulaciones/${encodeURIComponent(id)}/estado`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'no se pudo actualizar');
-    toast('¡Actualizado! 💪'); loadPipeline();
+    toast('¡Actualizado! 💪');
+    await loadPipeline();
+    if (restoreFocus && laneKey) $('board').querySelector(`.col-scroll[data-lane="${laneKey}"]`)?.focus();
   } catch (e) { toast('Error: ' + e.message); }
 }
 

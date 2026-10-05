@@ -121,7 +121,7 @@ This is the heart of the tool. The easiest way is the **Mi perfil** tab of the w
 
 The evaluator prompt is generated from this file, so the more precise your competencies and summary, the sharper the scoring.
 
-In **Mis postulaciones**, each active stage has its own scrollable list. The visible **Ofertas**, **Descartadas y rechazadas**, and **Sin evaluar** buttons open the remaining stages. Search and sorting cover the full saved pipeline, while **Ver más** loads older vacancies in pages; the registered-vacancy counter reports the full total, not only the current page.
+In **Mis postulaciones**, each active stage has its own scrollable list. The visible **Ofertas**, **Descartadas y rechazadas**, and **Sin evaluar** buttons open the remaining stages. Search and sorting cover the full saved pipeline, while **Ver 25 más** loads the next matching page; the registered-vacancy counter reports the full total, not only the current page.
 
 ## Use as an MCP server
 
