@@ -19,6 +19,8 @@ src/data/profile.json*
 src/data/scheduler-config.json
 src/data/*.backup*
 src/data/*.tmp*
+src/data/mock-analista-funcional/
+src/data/.mock-af-stage-*/
 data/
 
 # Editor / OS

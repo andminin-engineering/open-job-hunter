@@ -123,6 +123,27 @@ The evaluator prompt is generated from this file, so the more precise your compe
 
 In **Mis postulaciones**, each active stage has its own scrollable list. The visible **Ofertas**, **Descartadas y rechazadas**, **Sin evaluar**, and **Otros estados** buttons open the remaining stages. **Otros estados** shows records saved by older versions without changing them. Search and sorting cover the full saved pipeline, while **Ver 25 más** loads the next matching page; the registered-vacancy counter reports the full total, not only the current page.
 
+### Synthetic functional-analyst dashboard test
+
+To test the dashboard with more than 200 offers without using anyone's real pipeline, run the generator once per checkout. It creates 301 entirely fictitious offers, a fictitious analyst profile, and a disabled scheduler configuration under `src/data/mock-analista-funcional/`. These files are ignored by Git, and the generator refuses to replace an existing mock.
+
+In PowerShell, from the repository root:
+
+```powershell
+node scripts/generate-functional-analyst-mock.mjs # Skip if already generated
+npm run build
+$env:JOB_HUNTER_DATA_DIR = (Resolve-Path 'src/data/mock-analista-funcional').ProviderPath
+$env:JOB_HUNTER_DB_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'db.json'
+$env:PROFILE_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'profile.json'
+$env:SCHEDULER_CONFIG_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'scheduler-config.json'
+$env:SCHEDULER_ENABLED = 'false'
+$env:PORT = '3001'
+node build/bin/http.js
+```
+
+Open `http://127.0.0.1:3001`. These overrides keep the demo database, profile, and scheduler configuration separate from the normal app data. The fixture intentionally includes eight legacy-state cards so the **Otros estados** view can also be tested.
+After stopping the server, close that PowerShell window (or remove the six environment variables) before launching your normal setup; otherwise that window will continue pointing at the mock.
+
 ## Use as an MCP server
 
 Point any MCP client at the built server. Example for Claude Desktop / Claude Code (`mcp` config):
