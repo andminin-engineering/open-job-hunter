@@ -30,7 +30,8 @@
     border-bottom: 3px solid transparent; white-space: nowrap;
   }
   nav.tabs button.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
-  main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  main { max-width: 1680px; margin: 0 auto; padding: 24px; }
+  main > section.view:not(#view-inicio) { max-width: 1152px; margin-inline: auto; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
   .grid { display: grid; gap: 16px; }
   .kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 20px; }
@@ -69,17 +70,19 @@
   .pipeline-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .pipeline-modes button { border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--ink); padding: 8px 12px; font: inherit; cursor: pointer; }
   .pipeline-modes button.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-  .board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .board.single { grid-template-columns: minmax(0, 1fr); }
   .col { min-width: 0; height: 560px; height: clamp(320px, calc(100dvh - 330px), 700px); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
   .col h3 { margin: 4px 6px 10px; font-size: .9rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; flex: none; }
   .col-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 1px 3px; }
   .col-scroll:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
-  .col-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 8px 4px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: .78rem; }
+  .col-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 8px 4px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: .78rem; }
   .col-footer button { border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--brand); padding: 5px 8px; cursor: pointer; }
   .col-footer button:disabled { opacity: .5; cursor: wait; }
-  @media (max-width: 1000px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 620px) { .board { grid-template-columns: minmax(0, 1fr); } .col-scroll { overscroll-behavior: auto; } }
+  @media (max-width: 1200px) { .board { grid-template-columns: repeat(3, minmax(0, 1fr)); } .col { height: clamp(240px, calc(50dvh - 80px), 340px); } }
+  @media (max-width: 900px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 620px) { .board { grid-template-columns: minmax(0, 1fr); } .col { height: 260px; } .col-scroll { overscroll-behavior: auto; } }
+  .board.single .col { height: clamp(320px, calc(100dvh - 330px), 700px); }
   .job {
     background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
     font-size: .88rem; box-shadow: 0 1px 2px rgba(20,30,60,.06);
@@ -146,7 +149,7 @@
       <div class="field sort-field"><label for="pipelineSort">Ordenar por</label><select id="pipelineSort"><option value="updated_desc">Más recientes</option><option value="score_desc">Mayor compatibilidad</option><option value="company_asc">Empresa (A–Z)</option></select></div>
     </div>
     <div class="pipeline-modes" id="pipelineModes" role="group" aria-label="Vistas de postulaciones">
-      <button type="button" data-pipeline-view="active" class="active" aria-pressed="true">En curso <span id="activeCount"></span></button>
+      <button type="button" data-pipeline-view="active" class="active" aria-pressed="true">Tablero <span id="activeCount"></span></button>
       <button type="button" data-pipeline-view="accepted" aria-pressed="false">🏆 Aceptadas <span id="acceptedCount"></span></button>
       <button type="button" data-pipeline-view="rejected" aria-pressed="false">⛔ Rechazadas <span id="rejectedCount"></span></button>
       <button type="button" data-pipeline-view="discarded" aria-pressed="false">🗂️ Descartadas <span id="discardedCount"></span></button>
@@ -273,6 +276,8 @@ const PIPELINE_LANES = [
   { key: 'legacy', label: 'Otros estados', query: 'estados=aplicada,entrevista_inicial' },
 ];
 const PIPELINE_PAGE_SIZE = 25;
+const IN_PROGRESS_LANE_KEYS = ['evaluada', 'postulada', 'feedback_recibido', 'entrevista'];
+const BOARD_LANE_KEYS = [...IN_PROGRESS_LANE_KEYS, 'oferta', 'rechazada'];
 const PIPELINE_VIEW_TO_LANE = {
   accepted: 'oferta', rejected: 'rechazada', discarded: 'descartada', new: 'nueva', legacy: 'legacy',
 };
@@ -381,8 +386,9 @@ let pipelineRefreshing = false;
 let pipelineScrollPositions = {};
 let pipelineSearchTimer;
 function visiblePipelineLanes() {
-  if (pipelineView === 'active') return PIPELINE_LANES.slice(0, 4);
-  if (!Object.hasOwn(PIPELINE_VIEW_TO_LANE, pipelineView)) return PIPELINE_LANES.slice(0, 4);
+  if (pipelineView === 'active' || !Object.hasOwn(PIPELINE_VIEW_TO_LANE, pipelineView)) {
+    return BOARD_LANE_KEYS.map(key => PIPELINE_LANES.find(lane => lane.key === key)).filter(Boolean);
+  }
   return PIPELINE_LANES.filter(lane => lane.key === PIPELINE_VIEW_TO_LANE[pipelineView]);
 }
 async function fetchPipelinePage(lane, offset, limit = PIPELINE_PAGE_SIZE, query = pipelineQuery, sort = pipelineSort) {
@@ -411,7 +417,7 @@ async function fetchPipelineLane(lane, desiredCount, query, sort) {
 }
 function renderPipelineModes() {
   const count = key => pipelineData[key]?.total ?? 0;
-  $('activeCount').textContent = `(${PIPELINE_LANES.slice(0, 4).reduce((sum, lane) => sum + count(lane.key), 0)})`;
+  $('activeCount').textContent = `(${IN_PROGRESS_LANE_KEYS.reduce((sum, key) => sum + count(key), 0)} en curso)`;
   $('acceptedCount').textContent = `(${count('oferta')})`;
   $('rejectedCount').textContent = `(${count('rechazada')})`;
   $('discardedCount').textContent = `(${count('descartada')})`;

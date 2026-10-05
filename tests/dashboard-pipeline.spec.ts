@@ -142,7 +142,12 @@ async function clickInterviewOutcome(page: ReturnType<typeof dashboardWithManyOf
 }
 
 describe("scalable dashboard pipeline", () => {
-  it("constrains each keyboard-accessible lane and keeps outcome tabs visible above the board", () => {
+  it("shows six desktop columns with independent keyboard-accessible scroll and responsive wrapping", () => {
+    expect(html).toMatch(/\.board \{[^}]*grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+    expect(html).toContain('@media (max-width: 1200px)');
+    expect(html).toContain('.board.single .col { height: clamp(320px, calc(100dvh - 330px), 700px); }');
+    expect(html).toContain('main > section.view:not(#view-inicio) { max-width: 1152px');
+    expect(html).toMatch(/\.col-footer \{[^}]*flex-wrap: wrap/);
     expect(html).toMatch(/\.col \{[^}]*height: clamp\(/);
     expect(html).toMatch(/\.col-scroll \{[^}]*overflow-y: auto/);
     expect(html).toContain('role="region" aria-labelledby="${headingId}" tabindex="0"');
@@ -150,12 +155,12 @@ describe("scalable dashboard pipeline", () => {
     expect(html.indexOf('id="pipelineModes"')).toBeLessThan(html.indexOf('id="board"'));
   });
 
-  it("shows real totals, four active lanes, and separate accepted, rejected and discarded views", async () => {
+  it("shows accepted and rejected as visible board columns, plus focused outcome views", async () => {
     const page = dashboardWithManyOffers();
     await page.load();
 
     expect(page.element("kpis").innerHTML).toContain('class="num">238</div>');
-    expect(page.element("activeCount").textContent).toBe("(126)");
+    expect(page.element("activeCount").textContent).toBe("(126 en curso)");
     expect(page.element("acceptedCount").textContent).toBe("(1)");
     expect(page.element("rejectedCount").textContent).toBe("(3)");
     expect(page.element("discardedCount").textContent).toBe("(100)");
@@ -164,7 +169,11 @@ describe("scalable dashboard pipeline", () => {
     expect(page.urls.some(url => url.searchParams.get("estado") === "descartada")).toBe(true);
     expect(page.urls.some(url => url.searchParams.get("estados") === "descartada,rechazada")).toBe(false);
     expect(page.element("board").innerHTML).toContain("25 de 105");
-    expect(page.element("board").innerHTML).not.toContain("🏆 Aceptadas");
+    expect(page.element("board").innerHTML.match(/class="col" data-lane=/g)).toHaveLength(6);
+    expect([...page.element("board").innerHTML.matchAll(/class="col" data-lane="([^"]+)"/g)].map(match => match[1]))
+      .toEqual(["evaluada", "postulada", "feedback_recibido", "entrevista", "oferta", "rechazada"]);
+    expect(page.element("board").innerHTML).toContain('data-lane="oferta"><h3 id="lane-heading-oferta">🏆 Aceptadas');
+    expect(page.element("board").innerHTML).toContain('data-lane="rechazada"><h3 id="lane-heading-rechazada">⛔ Rechazadas');
     expect(page.element("board").innerHTML).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(page.element("board").innerHTML).not.toContain("<img src=x");
 
@@ -206,8 +215,9 @@ describe("scalable dashboard pipeline", () => {
     expect(accepted.element("board").innerHTML).toContain('data-id="entrevista-0" data-estado="oferta">¡Recibí oferta!</button>');
     await clickInterviewOutcome(accepted, "oferta");
     expect(accepted.patches).toEqual([{ id: "entrevista-0", estado: "oferta" }]);
-    expect(accepted.element("activeCount").textContent).toBe("(125)");
+    expect(accepted.element("activeCount").textContent).toBe("(125 en curso)");
     expect(accepted.element("acceptedCount").textContent).toBe("(2)");
+    expect(accepted.element("board").innerHTML).toContain('data-lane="oferta"><h3 id="lane-heading-oferta">🏆 Aceptadas<span>2 vacantes</span>');
     accepted.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "accepted" } }) } });
     expect(accepted.element("board").innerHTML).toContain("🏆 Aceptadas");
     expect(accepted.element("board").innerHTML).toContain("2 vacantes</span>");
@@ -217,8 +227,9 @@ describe("scalable dashboard pipeline", () => {
     expect(rejected.element("board").innerHTML).toContain('data-id="entrevista-0" data-estado="rechazada">No avanzó</button>');
     await clickInterviewOutcome(rejected, "rechazada");
     expect(rejected.patches).toEqual([{ id: "entrevista-0", estado: "rechazada" }]);
-    expect(rejected.element("activeCount").textContent).toBe("(125)");
+    expect(rejected.element("activeCount").textContent).toBe("(125 en curso)");
     expect(rejected.element("rejectedCount").textContent).toBe("(4)");
+    expect(rejected.element("board").innerHTML).toContain('data-lane="rechazada"><h3 id="lane-heading-rechazada">⛔ Rechazadas<span>4 vacantes</span>');
     rejected.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "rejected" } }) } });
     expect(rejected.element("board").innerHTML).toContain("⛔ Rechazadas");
     expect(rejected.element("board").innerHTML).toContain("4 vacantes</span>");
