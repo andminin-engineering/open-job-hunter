@@ -348,7 +348,9 @@ function pipelineSearchText(item: PipelineItem): string {
 function compareUpdatedDesc(a: PipelineItem, b: PipelineItem): number {
   const byDate = b.fechaActualizacion.localeCompare(a.fechaActualizacion);
   if (byDate !== 0) return byDate;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  if (a.id < b.id) return -1;
+  if (a.id > b.id) return 1;
+  return 0;
 }
 
 function comparePipelineItems(sort: z.infer<typeof PipelineSortSchema>) {
@@ -362,7 +364,9 @@ function comparePipelineItems(sort: z.infer<typeof PipelineSortSchema>) {
       // Items without a company sink to the bottom.
       const companyA = a.company?.trim() ?? "";
       const companyB = b.company?.trim() ?? "";
-      if (!companyA !== !companyB) return companyA ? -1 : 1;
+      const hasCompanyA = companyA.length > 0;
+      const hasCompanyB = companyB.length > 0;
+      if (hasCompanyA !== hasCompanyB) return hasCompanyA ? -1 : 1;
       const byCompany = companyA.localeCompare(companyB, "es", { sensitivity: "base" });
       if (byCompany !== 0) return byCompany;
     }
@@ -1495,8 +1499,8 @@ const httpServer = createServer(async (req, res) => {
         (!estadosFiltro || estadosFiltro.includes(item.estado))
         && (!searchTerm || matchesSearchTerm(pipelineSearchText(item), searchTerm))
       );
-      const ordered = filtered.sort(comparePipelineItems(query.sort));
-      const page = ordered.slice(query.offset, query.offset + limit);
+      filtered.sort(comparePipelineItems(query.sort));
+      const page = filtered.slice(query.offset, query.offset + limit);
 
       writeHttpJson(res, 200, {
         ok: true,
