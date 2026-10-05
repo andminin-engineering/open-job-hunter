@@ -151,6 +151,8 @@ describe("scalable dashboard pipeline", () => {
     expect(html).toMatch(/\.col \{[^}]*height: clamp\(/);
     expect(html).toMatch(/\.col-scroll \{[^}]*overflow-y: auto/);
     expect(html).toContain('role="region" aria-labelledby="${headingId}" tabindex="0"');
+    expect(html).toContain('<fieldset class="pipeline-modes" id="pipelineModes" aria-label="Vistas de postulaciones">');
+    expect(html).toContain('<output class="hint pipeline-view-hint" id="pipelineViewHint"></output>');
     expect(html).toContain('class="col-footer"><span aria-live="polite"');
     expect(html.indexOf('id="pipelineModes"')).toBeLessThan(html.indexOf('id="board"'));
   });
@@ -292,7 +294,7 @@ describe("scalable dashboard pipeline", () => {
     await Promise.resolve();
     const requestsBefore = page.urls.length;
     await page.loadMore("evaluada", { disabled: false });
-    expect(page.urls.length).toBe(requestsBefore);
+    expect(page.urls).toHaveLength(requestsBefore);
     page.releaseRefresh();
     await refreshing;
   });

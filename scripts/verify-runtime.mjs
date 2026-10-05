@@ -215,6 +215,9 @@ try {
     fechaProcesado: new Date(1_760_000_000_000 + index * 1000).toISOString(),
     fechaActualizacion: new Date(1_760_000_000_000 + index * 1000).toISOString(),
   }));
+  pipelineRows[100].fechaActualizacion = pipelineRows[101].fechaActualizacion;
+  pipelineRows[210].company = "";
+  pipelineRows[211].company = "   ";
   const seededDatabase = `${JSON.stringify(pipelineRows, null, 2)}\n`;
   const runtimeDatabasePath = join(dataDir, "db.json");
   await writeFile(runtimeDatabasePath, seededDatabase, "utf-8");
@@ -268,9 +271,18 @@ try {
   if (byCompany.payload.items[0]?.company !== "Empresa 000") {
     throw new Error("Pipeline no ordeno por empresa ascendente");
   }
-  for (const query of ["offset=-1", "offset=1.5", "estados=desconocida", "estados=", "sort=otro", "estado=evaluada&estados=oferta"]) {
-    const invalid = await getPipeline(query);
-    if (invalid.status !== 400) throw new Error(`Pipeline acepto el parametro invalido ${query}: ${invalid.status}`);
+  const withoutCompany = await getPipeline("estado=evaluada&sort=company_asc&offset=218&limit=2");
+  if (withoutCompany.payload.items.map((item) => item.id).join(",") !== "runtime-offer-211,runtime-offer-210") {
+    throw new Error("Pipeline no dejo empresas vacias al final con desempate estable");
+  }
+  const tiedDates = await getPipeline("estado=evaluada&sort=updated_desc&offset=118&limit=2");
+  if (tiedDates.payload.items.map((item) => item.id).join(",") !== "runtime-offer-100,runtime-offer-101") {
+    throw new Error("Pipeline no desempato por ID cuando coincide la fecha");
+  }
+  const invalidQueries = ["offset=-1", "offset=1.5", "estados=desconocida", "estados=", "sort=otro", "estado=evaluada&estados=oferta"];
+  const invalidResults = await Promise.all(invalidQueries.map(getPipeline));
+  for (const [index, invalid] of invalidResults.entries()) {
+    if (invalid.status !== 400) throw new Error(`Pipeline acepto el parametro invalido ${invalidQueries[index]}: ${invalid.status}`);
   }
   if (await readFile(runtimeDatabasePath, "utf-8") !== seededDatabase) {
     throw new Error("Las consultas del pipeline modificaron la base de datos");

@@ -113,5 +113,6 @@ try {
   }
   throw error;
 }
-console.log(`Mock de analista funcional creado: ${records.length} vacantes, ${Object.entries(stateCounts).map(([state, count]) => `${state}=${count}`).join(', ')}.`);
+const countSummary = Object.entries(stateCounts).map(([state, count]) => `${state}=${count}`).join(', ');
+console.log(`Mock de analista funcional creado: ${records.length} vacantes, ${countSummary}.`);
 console.log(`Carpeta: ${outputDir}`);

@@ -67,9 +67,10 @@
   .pipeline-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 14px; }
   .pipeline-toolbar .field { flex: 1 1 220px; margin: 0; }
   .pipeline-toolbar .field.sort-field { flex: 0 1 230px; }
-  .pipeline-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .pipeline-modes { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 0; border: 0; min-width: 0; }
   .pipeline-modes button { border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--ink); padding: 8px 12px; font: inherit; cursor: pointer; }
   .pipeline-modes button.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .pipeline-view-hint { display: block; margin: 4px 0 12px; }
   .board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .board.single { grid-template-columns: minmax(0, 1fr); }
   .col { min-width: 0; height: 560px; height: clamp(320px, calc(100dvh - 330px), 700px); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
@@ -148,15 +149,15 @@
       <div class="field"><label for="pipelineSearch">Buscar en todas las vacantes</label><input id="pipelineSearch" type="search" maxlength="200" placeholder="Empresa o texto del aviso" /></div>
       <div class="field sort-field"><label for="pipelineSort">Ordenar por</label><select id="pipelineSort"><option value="updated_desc">Más recientes</option><option value="score_desc">Mayor compatibilidad</option><option value="company_asc">Empresa (A–Z)</option></select></div>
     </div>
-    <div class="pipeline-modes" id="pipelineModes" role="group" aria-label="Vistas de postulaciones">
+    <fieldset class="pipeline-modes" id="pipelineModes" aria-label="Vistas de postulaciones">
       <button type="button" data-pipeline-view="active" class="active" aria-pressed="true">Tablero <span id="activeCount"></span></button>
       <button type="button" data-pipeline-view="accepted" aria-pressed="false">🏆 Aceptadas <span id="acceptedCount"></span></button>
       <button type="button" data-pipeline-view="rejected" aria-pressed="false">⛔ Rechazadas <span id="rejectedCount"></span></button>
       <button type="button" data-pipeline-view="discarded" aria-pressed="false">🗂️ Descartadas <span id="discardedCount"></span></button>
       <button type="button" data-pipeline-view="new" aria-pressed="false">Sin evaluar <span id="newCount"></span></button>
       <button type="button" data-pipeline-view="legacy" aria-pressed="false">Otros estados <span id="legacyCount"></span></button>
-    </div>
-    <p class="hint" id="pipelineViewHint" role="status"></p>
+    </fieldset>
+    <output class="hint pipeline-view-hint" id="pipelineViewHint"></output>
     <div class="board" id="board"></div>
   </section>
 
@@ -450,9 +451,11 @@ function renderPipelineBoard(preserveScroll = true) {
     const headingId = `lane-heading-${lane.key}`;
     const total = Number(data.total) || 0;
     const totalLabel = total === 1 ? 'vacante' : 'vacantes';
+    const emptyMessage = pipelineQuery ? 'Sin resultados para la búsqueda' : 'Nada por aquí todavía';
+    const content = data.items.length ? data.items.map(jobCard).join('') : `<div class="empty">${emptyMessage}</div>`;
     return `<div class="col" data-lane="${lane.key}"><h3 id="${headingId}">${esc(lane.label)}<span>${total} ${totalLabel}</span></h3>
       <div class="col-scroll" data-lane="${lane.key}" role="region" aria-labelledby="${headingId}" tabindex="0">
-        ${data.items.length ? data.items.map(jobCard).join('') : `<div class="empty">${pipelineQuery ? 'Sin resultados para la búsqueda' : 'Nada por aquí todavía'}</div>`}
+        ${content}
       </div>
       <div class="col-footer"><span aria-live="polite">${data.items.length} de ${total}</span>
         ${data.hasMore ? `<button type="button" data-load-more="${lane.key}">Ver ${PIPELINE_PAGE_SIZE} más</button>` : ''}
@@ -645,11 +648,10 @@ async function loadProfileForm() {
     if (!response.ok || !data.ok) throw new Error(data.error || 'no se pudo leer el perfil');
     loadedProfile = data.profile;
     fillProfileForm(data.isExampleFile ? {} : data.profile);
-    $('profileStatus').textContent = data.isExampleFile
-      ? 'Completá y guardá tu perfil para habilitar las evaluaciones.'
-      : data.isPlaceholder
-        ? 'Reemplazá el nombre de ejemplo para habilitar las evaluaciones.'
-        : '';
+    let profileStatus = '';
+    if (data.isExampleFile) profileStatus = 'Completá y guardá tu perfil para habilitar las evaluaciones.';
+    else if (data.isPlaceholder) profileStatus = 'Reemplazá el nombre de ejemplo para habilitar las evaluaciones.';
+    $('profileStatus').textContent = profileStatus;
     $('profileBtn').disabled = false;
     // Example data must never become the search term without the user choosing it.
     if (!data.isPlaceholder && !$('qSearch').value) $('qSearch').value = $('pKeywords').value;

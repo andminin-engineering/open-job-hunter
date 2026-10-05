@@ -1,12 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import vm from "node:vm";
 import { beforeAll, describe, expect, it } from "vitest";
 
 let html: string;
 
 beforeAll(async () => {
-  html = await readFile(resolve("app", "index.html"), "utf-8");
+  html = await readFile(new URL("../app/index.html", import.meta.url), "utf-8");
 });
 
 function dashboardWithProfile(profile: Record<string, unknown>, isPlaceholder: boolean, isExampleFile = isPlaceholder) {
@@ -27,8 +26,10 @@ function dashboardWithProfile(profile: Record<string, unknown>, isPlaceholder: b
 
   function element(id: string) {
     if (!elements.has(id)) {
+      let value = "";
       elements.set(id, {
-        value: "",
+        get value() { return value; },
+        set value(nextValue: string | number) { value = String(nextValue); },
         disabled: id === "profileBtn",
         textContent: "",
         className: "",
@@ -124,7 +125,7 @@ describe("dashboard profile onboarding", () => {
       expect(page.element(id).value, id).toBe("");
     }
     expect(page.element("pResponseLanguage").value).toBe("es");
-    expect(page.element("pMinScore").value).toBe(70);
+    expect(page.element("pMinScore").value).toBe("70");
     expect(page.element("profileBtn").disabled).toBe(false);
     expect(page.element("profileStatus").textContent).toContain("Completá y guardá");
 
@@ -165,7 +166,7 @@ describe("dashboard profile onboarding", () => {
     expect(page.element("pSkills").value).toBe("análisis: requisitos");
     expect(page.element("pLanguages").value).toBe("Inglés: B2");
     expect(page.element("pResponseLanguage").value).toBe("en");
-    expect(page.element("pMinScore").value).toBe(65);
+    expect(page.element("pMinScore").value).toBe("65");
     expect(page.element("qSearch").value).toBe("analista funcional");
 
     page.element("pResponseLanguage").value = "es";
