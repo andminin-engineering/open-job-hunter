@@ -150,7 +150,9 @@
       <button type="button" data-pipeline-view="offers" aria-pressed="false">🏆 Ofertas <span id="offersCount"></span></button>
       <button type="button" data-pipeline-view="discarded" aria-pressed="false">🗂️ Descartadas y rechazadas <span id="discardedCount"></span></button>
       <button type="button" data-pipeline-view="new" aria-pressed="false">Sin evaluar <span id="newCount"></span></button>
+      <button type="button" data-pipeline-view="legacy" aria-pressed="false">Otros estados <span id="legacyCount"></span></button>
     </div>
+    <p class="hint" id="pipelineViewHint" role="status"></p>
     <div class="board" id="board"></div>
   </section>
 
@@ -266,6 +268,7 @@ const PIPELINE_LANES = [
   { key: 'oferta', label: '🏆 Ofertas', query: 'estado=oferta' },
   { key: 'descartadas', label: '🗂️ Descartadas y rechazadas', query: 'estados=descartada,rechazada' },
   { key: 'nueva', label: 'Sin evaluar', query: 'estado=nueva' },
+  { key: 'legacy', label: 'Otros estados', query: 'estados=aplicada,entrevista_inicial' },
 ];
 const PIPELINE_PAGE_SIZE = 25;
 const NEXT_ACTIONS = {
@@ -351,7 +354,10 @@ function jobCard(item) {
   const link = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">ver aviso ↗</a>` : '';
   const description = String(item.oferta || '').replace(/\s+/g, ' ').trim();
   const snippet = description.length > 105 ? description.slice(0, 105).trimEnd() + '…' : description;
-  const archiveStatus = item.estado === 'rechazada' ? ' · Rechazada' : item.estado === 'descartada' ? ' · Descartada' : '';
+  const archiveStatus = {
+    rechazada: ' · Rechazada', descartada: ' · Descartada',
+    aplicada: ' · Aplicada (estado anterior)', entrevista_inicial: ' · Entrevista inicial (estado anterior)',
+  }[item.estado] || '';
   const updated = item.fechaActualizacion ? ' · ' + String(item.fechaActualizacion).slice(0, 10) : '';
   return `<div class="job">
     <div class="co">${esc(item.company || 'Empresa sin nombre')}</div>
@@ -371,7 +377,7 @@ let pipelineScrollPositions = {};
 let pipelineSearchTimer;
 function visiblePipelineLanes() {
   if (pipelineView === 'active') return PIPELINE_LANES.slice(0, 4);
-  const key = { offers: 'oferta', discarded: 'descartadas', new: 'nueva' }[pipelineView];
+  const key = { offers: 'oferta', discarded: 'descartadas', new: 'nueva', legacy: 'legacy' }[pipelineView];
   return PIPELINE_LANES.filter(lane => lane.key === key);
 }
 async function fetchPipelinePage(lane, offset, limit = PIPELINE_PAGE_SIZE, query = pipelineQuery, sort = pipelineSort) {
@@ -404,6 +410,10 @@ function renderPipelineModes() {
   $('offersCount').textContent = `(${count('oferta')})`;
   $('discardedCount').textContent = `(${count('descartadas')})`;
   $('newCount').textContent = `(${count('nueva')})`;
+  $('legacyCount').textContent = `(${count('legacy')})`;
+  $('pipelineViewHint').textContent = pipelineView === 'legacy'
+    ? 'Registros de versiones anteriores. Se muestran sin modificar su estado.'
+    : '';
   $('pipelineModes').querySelectorAll('button[data-pipeline-view]').forEach(button => {
     const selected = button.dataset.pipelineView === pipelineView;
     button.classList.toggle('active', selected);

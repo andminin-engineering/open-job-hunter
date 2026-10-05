@@ -197,12 +197,13 @@ try {
   const healthAfterSave = await fetch(`http://127.0.0.1:${port}/health`).then((response) => response.json());
   if (healthAfterSave.profileConfigured !== true) throw new Error("Healthcheck no reflejo el perfil guardado");
 
-  const pipelineRows = Array.from({ length: 225 }, (_, index) => ({
+  const pipelineRows = Array.from({ length: 227 }, (_, index) => ({
     id: `runtime-offer-${String(index).padStart(3, "0")}`,
     oferta: `Vacante de analista funcional número ${index}`,
     sourcePlatform: "runtime-test",
     company: index === 219 ? "Empresa Única" : `Empresa ${String(index).padStart(3, "0")}`,
-    estado: index < 220 ? "evaluada" : ["oferta", "descartada", "rechazada", "nueva", "postulada"][index - 220],
+    estado: index < 220 ? "evaluada"
+      : ["oferta", "descartada", "rechazada", "nueva", "postulada", "aplicada", "entrevista_inicial"][index - 220],
     evaluacion: index < 220 ? {
       match_score: index % 100,
       apply: true,
@@ -223,20 +224,20 @@ try {
   };
   const defaultPage = await getPipeline("");
   if (defaultPage.status !== 200 || defaultPage.payload.items.length !== 50
-    || defaultPage.payload.total !== 225 || defaultPage.payload.allTotal !== 225
+    || defaultPage.payload.total !== 227 || defaultPage.payload.allTotal !== 227
     || defaultPage.payload.hasMore !== true) {
     throw new Error("Pipeline perdio la paginacion predeterminada o no informo el total real");
   }
   const firstPage = await getPipeline("estado=evaluada&limit=25&offset=0");
   const lastPage = await getPipeline("estado=evaluada&limit=25&offset=200");
-  if (firstPage.status !== 200 || firstPage.payload.total !== 220 || firstPage.payload.allTotal !== 225
+  if (firstPage.status !== 200 || firstPage.payload.total !== 220 || firstPage.payload.allTotal !== 227
     || firstPage.payload.items.length !== 25 || firstPage.payload.hasMore !== true
     || lastPage.payload.items.length !== 20 || lastPage.payload.hasMore !== false
     || lastPage.payload.total !== 220 || lastPage.payload.items.at(-1)?.id !== "runtime-offer-000") {
     throw new Error("Pipeline no pagino correctamente las vacantes posteriores al limite anterior de 200");
   }
   const grouped = await getPipeline("estados=descartada,rechazada&limit=25");
-  if (grouped.payload.total !== 2 || grouped.payload.allTotal !== 225
+  if (grouped.payload.total !== 2 || grouped.payload.allTotal !== 227
     || !grouped.payload.items.some((item) => item.estado === "rechazada")
     || !grouped.payload.items.some((item) => item.estado === "descartada")) {
     throw new Error("Pipeline no agrupo descartadas y rechazadas con sus totales reales");
@@ -245,9 +246,17 @@ try {
   if (unreviewed.payload.total !== 1 || unreviewed.payload.items[0]?.estado !== "nueva") {
     throw new Error("Pipeline oculto vacantes nuevas sin evaluar");
   }
+  const legacy = await getPipeline("estados=aplicada,entrevista_inicial");
+  if (legacy.status !== 200 || legacy.payload.total !== 2 || legacy.payload.allTotal !== 227
+    || !legacy.payload.items.some((item) => item.estado === "aplicada")
+    || !legacy.payload.items.some((item) => item.estado === "entrevista_inicial")) {
+    throw new Error("Pipeline oculto estados heredados de la base anterior");
+  }
+  const legacyWrite = await postJson("/api/postulaciones/runtime-offer-220/estado", { estado: "aplicada" }, "PATCH");
+  if (legacyWrite.status !== 400) throw new Error("La compatibilidad de lectura permitio escribir un estado heredado");
   const search = await getPipeline("estado=evaluada&q=empresa%20unica");
   if (search.payload.total !== 1 || search.payload.items[0]?.company !== "Empresa Única"
-    || search.payload.allTotal !== 225) {
+    || search.payload.allTotal !== 227) {
     throw new Error("Pipeline no busco sobre todas las vacantes o altero el total global");
   }
   const byScore = await getPipeline("estado=evaluada&sort=score_desc&limit=25");

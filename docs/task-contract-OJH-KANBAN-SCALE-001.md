@@ -4,6 +4,7 @@
 
 - Baseline compartido: `d6105b7aaf9e1d9c179818ed49a16f8db786b88a`.
 - El usuario aprobó: altura adaptable y scroll interno por columna; accesos siempre visibles a Ofertas y Descartadas; búsqueda y orden; carga paginada con total real; tarjetas distinguibles cuando hay varias de la misma empresa.
+- La copia de la base real del ejecutable confirmó 301 registros, de los cuales 8 usan estados heredados de sólo lectura: `aplicada` (7) y `entrevista_inicial` (1). Deben quedar visibles sin migrar ni alterar la base.
 - La mejora sigue siendo local hasta autorización humana específica de push/merge/release. No ejecutar GitHub Actions manualmente.
 
 ## Contrato API acordado
@@ -14,6 +15,7 @@
 - `q`: búsqueda sin distinguir mayúsculas/minúsculas por empresa, fuente y texto de la oferta.
 - `sort`: `updated_desc` (predeterminado), `score_desc` o `company_asc`.
 - `estados`: lista CSV de estados válidos para una vista agrupada, por ejemplo `descartada,rechazada`. No se combina con `estado`; `estado` singular existente sigue funcionando.
+- Para consultas de lectura, `estado`/`estados` también aceptan los dos valores heredados `aplicada` y `entrevista_inicial`. Esto no amplía los estados permitidos para escribir o mover vacantes.
 - `limit`: mantiene el máximo existente de 200 y su comportamiento previo para clientes actuales.
 
 Respuesta: `{ ok: true, total, allTotal, items, limit, offset, hasMore }`. `total` es la cantidad que coincide con estados y búsqueda antes de paginar; `allTotal` cuenta todas las vacantes guardadas, sin filtros; `items` es sólo la página solicitada; `hasMore` indica más elementos del filtro. Orden estable con desempate por fecha de actualización e ID. Parámetros nuevos malformados responden 400. No alterar los registros ni el formato del archivo de datos.
@@ -26,7 +28,7 @@ Respuesta: `{ ok: true, total, allTotal, items, limit, offset, hasMore }`. `tota
 
 ## Comportamiento de la interfaz
 
-- En escritorio, las cuatro columnas activas quedan en una misma fila; Ofertas, Descartadas/Rechazadas y Sin evaluar (`nueva`) tienen accesos visibles con contadores y vista propia, sin quedar ocultas debajo de columnas largas.
+- En escritorio, las cuatro columnas activas quedan en una misma fila; Ofertas, Descartadas/Rechazadas, Sin evaluar (`nueva`) y Otros estados (`aplicada`, `entrevista_inicial`) tienen accesos visibles con contadores y vista propia, sin quedar ocultas debajo de columnas largas.
 - Cada lista usa alto relativo al viewport y scroll interno; encabezado y cantidad permanecen visibles. Las regiones con scroll son accesibles por teclado y tienen nombre accesible.
 - Se cargan páginas por estado/grupo con un control explícito `Ver más`, sin insinuar que sólo existen los elementos cargados. La búsqueda y el orden actúan sobre todos los datos a través de la API, no sólo sobre la página visible.
 - `Vacantes registradas` usa `allTotal`, no `items.length`; los contadores de columnas usan `total` filtrado. Se diferencia el estado `rechazada` del `descartada` en tarjetas agrupadas.

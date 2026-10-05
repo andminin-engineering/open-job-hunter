@@ -16,7 +16,7 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
   const handlers = new Map<string, (event: unknown) => void>();
   const urls: URL[] = [];
   const evaluatedTotal = options.evaluatedTotal ?? 105;
-  const allTotal = evaluatedTotal + 125;
+  const allTotal = evaluatedTotal + 133;
   let activeElement: unknown;
   let focusedAfterLoad = false;
   let releaseLaterPage: (() => void) | undefined;
@@ -73,6 +73,7 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
       oferta: 1,
       "descartada,rechazada": 103,
       nueva: 0,
+      "aplicada,entrevista_inicial": 8,
     }[lane ?? ""] ?? 0);
     const count = Math.min(limit, Math.max(0, total - offset));
     const items = Array.from({ length: count }, (_, index) => ({
@@ -80,7 +81,9 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
       company: lane === "evaluada" ? "Asana" : "Empresa de prueba",
       oferta: "Analista funcional <img src=x onerror=alert(1)> para procesos",
       sourcePlatform: "test",
-      estado: lane === "descartada,rechazada" ? "rechazada" : lane,
+      estado: lane === "descartada,rechazada" ? "rechazada"
+        : lane === "aplicada,entrevista_inicial" ? (index % 2 ? "aplicada" : "entrevista_inicial")
+          : lane,
       fechaActualizacion: "2026-10-05T12:00:00.000Z",
     }));
     return {
@@ -129,10 +132,11 @@ describe("scalable dashboard pipeline", () => {
     const page = dashboardWithManyOffers();
     await page.load();
 
-    expect(page.element("kpis").innerHTML).toContain('class="num">230</div>');
+    expect(page.element("kpis").innerHTML).toContain('class="num">238</div>');
     expect(page.element("activeCount").textContent).toBe("(126)");
     expect(page.element("offersCount").textContent).toBe("(1)");
     expect(page.element("discardedCount").textContent).toBe("(103)");
+    expect(page.element("legacyCount").textContent).toBe("(8)");
     expect(page.element("board").innerHTML).toContain("25 de 105");
     expect(page.element("board").innerHTML).not.toContain("🏆 Ofertas");
     expect(page.element("board").innerHTML).toContain("&lt;img src=x onerror=alert(1)&gt;");
@@ -145,6 +149,11 @@ describe("scalable dashboard pipeline", () => {
 
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "discarded" } }) } });
     expect(page.element("board").innerHTML).toContain("Rechazada");
+
+    page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "legacy" } }) } });
+    expect(page.element("board").innerHTML).toContain("Aplicada (estado anterior)");
+    expect(page.element("board").innerHTML).toContain("Entrevista inicial (estado anterior)");
+    expect(page.element("pipelineViewHint").textContent).toContain("sin modificar su estado");
   });
 
   it("loads later pages and sends search and sort to the API instead of filtering loaded cards", async () => {
@@ -162,13 +171,13 @@ describe("scalable dashboard pipeline", () => {
     page.element("pipelineSearch").value = "Asana";
     page.element("pipelineSort").value = "score_desc";
     await page.load();
-    expect(page.urls.slice(-7)).toHaveLength(7);
-    for (const url of page.urls.slice(-7)) {
+    expect(page.urls.slice(-8)).toHaveLength(8);
+    for (const url of page.urls.slice(-8)) {
       expect(url.searchParams.get("q")).toBe("Asana");
       expect(url.searchParams.get("sort")).toBe("score_desc");
       expect(url.searchParams.get("limit")).toBe("25");
     }
-    expect(page.element("kpis").innerHTML).toContain('class="num">230</div>');
+    expect(page.element("kpis").innerHTML).toContain('class="num">238</div>');
     expect(page.element("board").innerHTML).toContain("2 de 2");
   });
 
@@ -222,6 +231,6 @@ describe("scalable dashboard pipeline", () => {
     expect(page.urls.some(url => url.searchParams.get("estado") === "evaluada"
       && url.searchParams.get("offset") === "200" && url.searchParams.get("limit") === "20")).toBe(true);
     expect(page.element("board").innerHTML).toContain("220 de 220");
-    expect(page.element("kpis").innerHTML).toContain('class="num">345</div>');
+    expect(page.element("kpis").innerHTML).toContain('class="num">353</div>');
   });
 });
