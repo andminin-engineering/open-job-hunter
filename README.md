@@ -131,7 +131,7 @@ In PowerShell, from the repository root:
 
 ```powershell
 node scripts/generate-functional-analyst-mock.mjs # Skip if already generated
-npm run build
+node node_modules/typescript/bin/tsc
 $env:JOB_HUNTER_DATA_DIR = (Resolve-Path 'src/data/mock-analista-funcional').ProviderPath
 $env:JOB_HUNTER_DB_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'db.json'
 $env:PROFILE_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'profile.json'
