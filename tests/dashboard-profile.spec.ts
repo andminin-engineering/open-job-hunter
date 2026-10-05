@@ -200,6 +200,7 @@ describe("dashboard profile onboarding", () => {
       summary: "Datos propios que no deben desaparecer del formulario.",
       coreCompetencies: { análisis: ["requisitos"] },
       responseLanguage: "en",
+      search: { keywords: "analista funcional" },
     }, true, false);
 
     await page.load();
@@ -207,6 +208,7 @@ describe("dashboard profile onboarding", () => {
     expect(page.element("pHeadline").value).toBe("Analista funcional");
     expect(page.element("pSummary").value).toContain("Datos propios");
     expect(page.element("pResponseLanguage").value).toBe("en");
+    expect(page.element("qSearch").value).toBe("");
     expect(page.element("profileStatus").textContent).toContain("Reemplazá el nombre");
   });
 });
