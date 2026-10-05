@@ -14,7 +14,7 @@ Unsigned beta builds may trigger Windows SmartScreen. A hash and provenance esta
 ## Suggested test
 
 1. Start Open Job Hunter and open **Mi perfil**.
-2. Complete the empty **Mi perfil** form with your own professional information and choose the language for AI responses. The examples beside the fields are guidance, not saved values.
+2. Complete the empty **Mi perfil** form with your own professional information and choose the language for the evaluation narrative. The examples beside the fields are guidance, not saved values.
 3. Confirm that the header reports the assistant and local AI as ready.
 4. Search for a role relevant to your profession.
 5. Preview results before selecting **Buscar, evaluar y guardar**.
