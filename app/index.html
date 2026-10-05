@@ -453,10 +453,12 @@ async function loadProfileForm() {
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error(data.error || 'no se pudo leer el perfil');
     loadedProfile = data.profile;
-    fillProfileForm(data.isPlaceholder ? {} : data.profile);
-    $('profileStatus').textContent = data.isPlaceholder
+    fillProfileForm(data.isExampleFile ? {} : data.profile);
+    $('profileStatus').textContent = data.isExampleFile
       ? 'Completá y guardá tu perfil para habilitar las evaluaciones.'
-      : '';
+      : data.isPlaceholder
+        ? 'Reemplazá el nombre de ejemplo para habilitar las evaluaciones.'
+        : '';
     $('profileBtn').disabled = false;
     // Example data must never become the search term without the user choosing it.
     if (!data.isPlaceholder && !$('qSearch').value) $('qSearch').value = $('pKeywords').value;

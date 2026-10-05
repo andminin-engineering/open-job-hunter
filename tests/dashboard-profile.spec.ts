@@ -9,7 +9,7 @@ beforeAll(async () => {
   html = await readFile(resolve("app", "index.html"), "utf-8");
 });
 
-function dashboardWithProfile(profile: Record<string, unknown>, isPlaceholder: boolean) {
+function dashboardWithProfile(profile: Record<string, unknown>, isPlaceholder: boolean, isExampleFile = isPlaceholder) {
   const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
   if (!script) throw new Error("No se encontró el script del dashboard");
 
@@ -47,7 +47,7 @@ function dashboardWithProfile(profile: Record<string, unknown>, isPlaceholder: b
       return { ok: true, json: async () => ({ ok: true, profile: saved, isPlaceholder: false }) };
     }
     if (url.endsWith("/api/profile")) {
-      return { ok: true, json: async () => ({ ok: true, profile, isPlaceholder }) };
+      return { ok: true, json: async () => ({ ok: true, profile, isPlaceholder, isExampleFile }) };
     }
     throw new Error(`Unexpected request: ${url}`);
   };
@@ -191,5 +191,22 @@ describe("dashboard profile onboarding", () => {
 
     expect(page.element("pName").value).toBe("Ana Pérez");
     expect(page.element("pResponseLanguage").value).toBe("es");
+  });
+
+  it("preserves a user's profile when only its name still matches the example", async () => {
+    const page = dashboardWithProfile({
+      fullName: "Your Name",
+      headline: "Analista funcional",
+      summary: "Datos propios que no deben desaparecer del formulario.",
+      coreCompetencies: { análisis: ["requisitos"] },
+      responseLanguage: "en",
+    }, true, false);
+
+    await page.load();
+
+    expect(page.element("pHeadline").value).toBe("Analista funcional");
+    expect(page.element("pSummary").value).toContain("Datos propios");
+    expect(page.element("pResponseLanguage").value).toBe("en");
+    expect(page.element("profileStatus").textContent).toContain("Reemplazá el nombre");
   });
 });

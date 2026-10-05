@@ -139,7 +139,8 @@ try {
 
   const profileBefore = await fetch(`http://127.0.0.1:${port}/api/profile`);
   const profileBeforePayload = await profileBefore.json();
-  if (!profileBefore.ok || !profileBeforePayload.isPlaceholder) {
+  if (!profileBefore.ok || !profileBeforePayload.isPlaceholder || !profileBeforePayload.isExampleFile
+    || profileBeforePayload.profile.responseLanguage !== "es") {
     throw new Error("El perfil inicial no fue identificado como ejemplo");
   }
 
@@ -168,6 +169,7 @@ try {
     coreCompetencies: { design: ["Figma", "Research"] },
     locations: ["Remote"],
     languages: [{ language: "Spanish", level: "Native" }],
+    responseLanguage: "en",
     search: { keywords: "product designer", minScoreToApply: 70, boards: {} },
   };
   const profileSave = await fetch(`http://127.0.0.1:${port}/api/profile`, {
@@ -177,13 +179,20 @@ try {
   });
   if (!profileSave.ok) throw new Error(`No se pudo guardar el perfil por HTTP: ${profileSave.status}`);
   const savedProfile = JSON.parse(await readFile(profilePath, "utf-8"));
-  if (savedProfile.headline !== candidateProfile.headline) {
+  if (savedProfile.headline !== candidateProfile.headline || savedProfile.responseLanguage !== "en") {
     throw new Error("El perfil guardado por HTTP no se persistio en PROFILE_PATH");
   }
 
   const profileAfterPayload = await fetch(`http://127.0.0.1:${port}/api/profile`).then((response) => response.json());
-  if (profileAfterPayload.isPlaceholder || profileAfterPayload.profile.headline !== candidateProfile.headline) {
+  if (profileAfterPayload.isPlaceholder || profileAfterPayload.isExampleFile
+    || profileAfterPayload.profile.headline !== candidateProfile.headline
+    || profileAfterPayload.profile.responseLanguage !== "en"
+    || profileAfterPayload.profile.languages[0]?.language !== "Spanish") {
     throw new Error("El endpoint de perfil no sirvio los cambios sin reiniciar");
+  }
+  const invalidLanguage = await postJson("/api/profile", { ...candidateProfile, responseLanguage: "fr" }, "PUT");
+  if (invalidLanguage.status !== 400 || JSON.parse(await readFile(profilePath, "utf-8")).responseLanguage !== "en") {
+    throw new Error("Un idioma no soportado no fue rechazado con 400 o modifico el perfil guardado");
   }
   const healthAfterSave = await fetch(`http://127.0.0.1:${port}/health`).then((response) => response.json());
   if (healthAfterSave.profileConfigured !== true) throw new Error("Healthcheck no reflejo el perfil guardado");
