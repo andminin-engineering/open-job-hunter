@@ -153,6 +153,8 @@ describe("scalable dashboard pipeline", () => {
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "legacy" } }) } });
     expect(page.element("board").innerHTML).toContain("Aplicada (estado anterior)");
     expect(page.element("board").innerHTML).toContain("Entrevista inicial (estado anterior)");
+    expect(page.element("board").innerHTML).not.toContain('data-id=');
+    expect(page.element("board").innerHTML).not.toContain('data-estado=');
     expect(page.element("pipelineViewHint").textContent).toContain("sin modificar su estado");
   });
 
