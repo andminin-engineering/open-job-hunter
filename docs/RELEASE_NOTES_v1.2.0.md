@@ -1,5 +1,7 @@
 # Open Job Hunter v1.2.0
 
+v1.2.0 is the stable release channel. The public beta is the feedback program around it: testers install this release and report their experience through the Beta feedback form. There is no separate beta build.
+
 ## Highlights
 
 - Choose Spanish or English for the AI evaluation narrative independently from the languages listed as professional skills.
@@ -7,6 +9,14 @@
 - Navigate large application histories with server-side search, ordering, real totals and paginated loading.
 - Keep active applications, **Con oferta**, rejections, personal discards, unevaluated vacancies and legacy states visible without rewriting stored data.
 - Preserve keyboard focus and provide accessible status announcements while loading more vacancies.
+
+## Other changes since v1.1.0
+
+- Evaluations stay blocked until you save your own profile. The dashboard, HTTP API, MCP tools, batch evaluation, discovery imports and the scheduler all refuse to evaluate against the shipped example profile, and searches no longer assume a software-architecture background.
+- Local AI readiness is diagnosed instead of failing with a bare "fetch failed": `/health` and the dashboard report whether Ollama is installed, running and has the configured model pulled, and evaluation is blocked with the corrective step until it is ready.
+- Job-board data is escaped before it is rendered in the dashboard and only `http(s)` links are made clickable.
+- `npm run doctor` reports local readiness with project paths and user names redacted so its output can be shared in public issues.
+- This is the first version built and published by the verifiable Windows release pipeline described below.
 
 ## Privacy and compatibility
 

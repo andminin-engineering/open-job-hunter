@@ -1226,10 +1226,14 @@ Por favor, ejecuta el análisis estructural estricto basándote en el perfil del
   };
 }
 
+const { version: PACKAGE_VERSION } = z
+  .object({ version: z.string().min(1) })
+  .parse(JSON.parse(await readFile(`${PROJECT_ROOT}/package.json`, "utf-8")));
+
 const server = new Server(
   {
     name: "open-job-hunter",
-    version: "1.0.0",
+    version: PACKAGE_VERSION,
   },
   {
     capabilities: {

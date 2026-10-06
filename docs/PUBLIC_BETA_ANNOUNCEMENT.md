@@ -6,13 +6,15 @@ Estamos abriendo la beta pública de **Open Job Hunter** 🎯
 
 Es una aplicación open source que organiza postulaciones, busca oportunidades y evalúa compatibilidad utilizando IA local con Ollama. El perfil profesional y el historial permanecen en la computadora del usuario.
 
-La nueva versión permite elegir español o inglés para la narrativa de evaluación y ofrece un tablero preparado para historiales grandes: búsqueda, orden, paginación y vistas separadas para procesos en curso, vacantes con oferta, rechazos y descartes. **Con oferta** significa que se recibió una propuesta; no implica que ya fue aceptada.
+La beta pública es un programa de feedback, no una compilación aparte: se prueba con **v1.2.0**, la versión estable publicada en GitHub Releases.
+
+Esta versión exige completar un perfil propio antes de evaluar, diagnostica si Ollama y el modelo configurado están listos, permite elegir español o inglés para la narrativa de evaluación y ofrece un tablero preparado para historiales grandes: búsqueda, orden, paginación y vistas separadas para procesos en curso, vacantes con oferta, rechazos y descartes. **Con oferta** significa que se recibió una propuesta; no implica que ya fue aceptada.
 
 Buscamos personas de cualquier profesión —no solamente tecnología— que quieran probar el flujo y ayudarnos a detectar sesgos, errores y mejoras de experiencia.
 
 ### Cómo participar
 
-1. Descargá la beta desde la página oficial de GitHub Releases.
+1. Descargá v1.2.0 desde la página oficial de GitHub Releases.
 2. Verificá el SHA-256 publicado junto al instalador.
 3. Completá **Mi perfil**, elegí el idioma de las respuestas y probá una búsqueda o una vacante real.
 4. Compartí una experiencia sin datos personales mediante el formulario de Beta feedback.
@@ -22,11 +24,11 @@ Si el proyecto te resulta útil, una ⭐ en GitHub ayuda a que otras personas lo
 En paralelo, el proyecto está preparando los controles técnicos y de gobernanza necesarios para solicitar la firma del instalador de Windows mediante SignPath Foundation.
 
 - Repositorio: https://github.com/andminin-engineering/open-job-hunter
-- Descarga beta: https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.0
+- Descarga (v1.2.0 estable): https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.0
 - Guía de prueba: https://github.com/andminin-engineering/open-job-hunter/blob/main/docs/BETA_TESTING.md
 - Compartir feedback: https://github.com/andminin-engineering/open-job-hunter/issues/new?template=beta-feedback.yml
 
-La beta no automatiza postulaciones ni reemplaza el criterio profesional. Las recomendaciones de IA deben revisarse antes de tomar decisiones.
+Open Job Hunter no automatiza postulaciones ni reemplaza el criterio profesional. Las recomendaciones de IA deben revisarse antes de tomar decisiones.
 
 ## Publication record
 
