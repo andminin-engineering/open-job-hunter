@@ -11,7 +11,7 @@ Publishing a checksum beside a locally built executable does not prove which sou
 
 Produce Windows releases in an isolated GitHub-hosted runner from `package-lock.json` using `npm ci`. Pin every GitHub Action dependency to a full commit SHA. Gate artifacts on compilation, tests, runtime checks, dependency audit and Microsoft Defender scanning. Publish SHA-256 hashes, a CycloneDX SBOM and GitHub/Sigstore attestations for provenance and SBOM association.
 
-Authenticode signing remains a separate identity control. Apply for an open-source signing service and prepare MSIX distribution rather than treating attestations as a substitute for Windows code signing.
+Authenticode signing remains a separate identity control. An open-source code-signing request has been submitted and is pending approval; prepare MSIX distribution rather than treating attestations as a substitute for Windows code signing.
 
 ## Consequences
 
