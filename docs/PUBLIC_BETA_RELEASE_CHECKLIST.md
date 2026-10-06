@@ -4,34 +4,35 @@ This checklist does not authorize a release. The human owner must explicitly app
 
 ## Product readiness
 
-- [ ] The example profile contains no real person's background and evaluations are blocked until the user configures a profile.
-- [ ] Missing Ollama and missing-model states display actionable guidance.
+- [x] The example profile contains no real person's background and evaluations are blocked until the user configures a profile.
+- [x] Missing Ollama and missing-model states display actionable guidance.
 - [ ] A clean Windows installation completes the flow in `BETA_TESTING.md`.
-- [ ] Installer, portable edition and uninstall/data-removal behavior are verified.
+- [x] Installer and portable edition start with isolated data, and silent uninstall removes the temporary installation. User-data retention remains documented separately.
 - [x] Known limitations are recorded in `RELEASE_NOTES_v1.2.0.md`.
 
 ## Quality and security
 
-- [ ] `npm ci --ignore-scripts`
-- [ ] `npm run build`
-- [ ] `npm test`
-- [ ] `npm run test:runtime`
-- [ ] `npm run doctor`
-- [ ] `npm audit --audit-level=high`
-- [ ] Independent review coverage of the exact `main...release` diff, including workflows and build scripts. Coverage may be split by authorship; no provider approves code it authored.
-- [ ] Human owner records the final merge and release authorization, including any explicitly accepted review waiver or non-blocking findings.
-- [ ] No unresolved critical/high review findings.
-- [ ] GitHub account MFA and private vulnerability reporting are enabled.
+- [x] `npm ci --ignore-scripts`
+- [x] `npm run build`
+- [x] `npm test`
+- [x] `npm run test:runtime`
+- [x] `npm run doctor`
+- [x] `npm audit --audit-level=high`
+- [x] Independent review coverage of the exact release diff, including workflows and build scripts. Coverage was split by authorship; no provider approved code it authored.
+- [x] Human owner authorized the merge and the reviewed release sequence.
+- [x] No unresolved critical/high review findings.
+- [x] Private vulnerability reporting is enabled.
+- [ ] GitHub account MFA is confirmed by the human owner; the available API token cannot read this account setting.
 
 ## Release evidence
 
-- [ ] Immutable release tag (candidate: `v1.2.0`) points to the reviewed commit and exactly matches `package.json`.
-- [ ] GitHub-hosted workflow builds the Windows artifacts from the committed lockfile.
-- [ ] Microsoft Defender scan passes.
-- [ ] SHA-256 manifest and CycloneDX SBOM are published beside the executables.
-- [ ] GitHub build-provenance and SBOM attestations verify successfully.
-- [ ] Product name and version metadata match the tag.
-- [ ] Release `v1.2.0` is published as the approved stable channel and identifies the Windows artifacts as unsigned.
+- [x] Immutable tag `v1.2.0` points to reviewed commit `0635efa081a07ffcf06cda47c0128b72bdb38d35` and matches `package.json`.
+- [x] [GitHub-hosted workflow](https://github.com/andminin-engineering/open-job-hunter/actions/runs/37463765942) built the Windows artifacts from the committed lockfile.
+- [x] Microsoft Defender scan passed.
+- [x] SHA-256 manifest and CycloneDX SBOM are published beside both executables.
+- [x] Each executable has GitHub build-provenance and SBOM attestations for its published SHA-256 digest.
+- [x] Product and file version metadata match `v1.2.0`.
+- [x] [Release `v1.2.0`](https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.0) is the stable channel and identifies the Windows artifacts as unsigned.
 
 ## Community operations
 
