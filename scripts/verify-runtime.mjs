@@ -12,6 +12,7 @@ const dataDir = await mkdtemp(join(tmpdir(), "mcp-job-hunter-runtime-"));
 const schedulerConfigPath = join(dataDir, "scheduler-config.json");
 const profilePath = join(dataDir, "profile.json");
 const port = 3217;
+const packageVersion = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf-8")).version;
 
 function start(entrypoint, mode, extraEnv = {}) {
   const child = spawn(process.execPath, [join(projectRoot, "build", "bin", entrypoint)], {
@@ -318,12 +319,15 @@ try {
   await waitForHttp(`http://127.0.0.1:${port}/health`, false);
   if (mcp.child.exitCode !== null) throw new Error(`MCP termino prematuramente: ${mcp.getStderr()}`);
   if (mcp.getStdout() !== "") throw new Error(`MCP contamino stdout sin recibir mensajes: ${mcp.getStdout()}`);
-  await mcpRequest(mcp, {
+  const mcpInitialize = await mcpRequest(mcp, {
     jsonrpc: "2.0",
     id: 1,
     method: "initialize",
     params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "verify-runtime", version: "0" } },
   });
+  if (mcpInitialize.result?.serverInfo?.version !== packageVersion) {
+    throw new Error(`MCP reporto version ${mcpInitialize.result?.serverInfo?.version}; se esperaba ${packageVersion}`);
+  }
   mcp.child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
   const mcpEvaluation = await mcpRequest(mcp, {
     jsonrpc: "2.0",

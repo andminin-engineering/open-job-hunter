@@ -43,6 +43,10 @@ jobs:
           if ($env:RELEASE_TAG -ne "v$version") {
             throw "Release tag '$env:RELEASE_TAG' does not match package.json version '$version'"
           }
+          $notesPath = "docs/RELEASE_NOTES_$env:RELEASE_TAG.md"
+          if (-not (Test-Path $notesPath -PathType Leaf) -or -not (Get-Content $notesPath -Raw).Trim()) {
+            throw "Release notes '$notesPath' are missing or empty; commit them before tagging $env:RELEASE_TAG"
+          }
 
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
@@ -116,8 +120,12 @@ jobs:
         run: |
           gh release view $env:RELEASE_TAG 2>$null
           if ($LASTEXITCODE -ne 0) {
+            $notesPath = "docs/RELEASE_NOTES_$env:RELEASE_TAG.md"
+            if (-not (Test-Path $notesPath -PathType Leaf)) {
+              throw "Release notes '$notesPath' are missing for $env:RELEASE_TAG"
+            }
             $prerelease = @(if ($env:RELEASE_TAG.Contains("-")) { "--prerelease" })
-            gh release create $env:RELEASE_TAG --verify-tag --generate-notes @prerelease --title "Open Job Hunter $env:RELEASE_TAG"
+            gh release create $env:RELEASE_TAG --verify-tag --notes-file $notesPath --generate-notes @prerelease --title "Open Job Hunter $env:RELEASE_TAG"
             if ($LASTEXITCODE -ne 0) { throw "gh release create failed for $env:RELEASE_TAG" }
           }
           $assetPaths = @(
