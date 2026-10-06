@@ -4,6 +4,9 @@ import { dirname } from "node:path";
 import { z } from "zod";
 import { PROFILE_EXAMPLE_PATH, PROFILE_PATH } from "./paths.js";
 
+export const RESPONSE_LANGUAGES = ["es", "en"] as const;
+export type ResponseLanguage = (typeof RESPONSE_LANGUAGES)[number];
+
 /**
  * Candidate profile schema.
  *
@@ -22,9 +25,13 @@ export const ProfileSchema = z.object({
   portfolioUrl: z.string().url().optional(),
   salaryTargetUsd: z.number().positive().optional(),
   locations: z.array(z.string()).default([]),
+  // Languages the candidate speaks; they describe skills, not the output language.
   languages: z
     .array(z.object({ language: z.string(), level: z.string() }))
     .default([]),
+  // Language the evaluator writes its free-text results in. Profiles saved
+  // before this field existed default to Spanish.
+  responseLanguage: z.enum(RESPONSE_LANGUAGES).default("es"),
   search: z
     .object({
       keywords: z.string().default(""),

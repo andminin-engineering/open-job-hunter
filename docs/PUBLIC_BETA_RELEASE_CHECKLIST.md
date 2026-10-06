@@ -18,13 +18,14 @@ This checklist does not authorize a release. The human owner must explicitly app
 - [ ] `npm run test:runtime`
 - [ ] `npm run doctor`
 - [ ] `npm audit --audit-level=high`
-- [ ] Independent review of the exact `main...release` diff, including workflows and build scripts.
+- [ ] Independent review coverage of the exact `main...release` diff, including workflows and build scripts. Coverage may be split by authorship; no provider approves code it authored.
+- [ ] Human owner records the final merge and release authorization, including any explicitly accepted review waiver or non-blocking findings.
 - [ ] No unresolved critical/high review findings.
 - [ ] GitHub account MFA and private vulnerability reporting are enabled.
 
 ## Release evidence
 
-- [ ] Immutable beta tag such as `v1.1.0-beta.1` points to the reviewed commit.
+- [ ] Immutable release tag (candidate: `v1.2.0`) points to the reviewed commit and exactly matches `package.json`.
 - [ ] GitHub-hosted workflow builds the Windows artifacts from the committed lockfile.
 - [ ] Microsoft Defender scan passes.
 - [ ] SHA-256 manifest and CycloneDX SBOM are published beside the executables.

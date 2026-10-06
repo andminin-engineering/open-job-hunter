@@ -98,7 +98,7 @@ Run `npm run doctor` after building to check paths, local data access, profile s
 
 ## Configure your profile
 
-This is the heart of the tool. The easiest way is the **Mi perfil** tab of the web interface, which saves to `config/profile.json` (or `PROFILE_PATH`). Until you replace the example name, the dashboard warns that evaluations still use the example profile. You can also copy the example and edit it by hand:
+This is the heart of the tool. The easiest way is the **Mi perfil** tab of the web interface, which starts with empty fields and saves to `config/profile.json` (or `PROFILE_PATH`). Evaluation stays blocked until you save your own profile. The **Idioma de las respuestas** setting controls the language of AI feedback; **Idiomas que dominás** describes your language skills. You can also copy the example and edit it by hand:
 
 ```jsonc
 {
@@ -120,6 +120,29 @@ This is the heart of the tool. The easiest way is the **Mi perfil** tab of the w
 ```
 
 The evaluator prompt is generated from this file, so the more precise your competencies and summary, the sharper the scoring.
+
+In **Mis postulaciones**, the main desktop board shows the four in-progress stages plus **Con oferta** and **Rechazadas** as six visible columns, each with its own scrollable list. On narrower screens the columns wrap into rows; the outcome buttons can also focus on one column at a time. **Descartadas**, **Sin evaluar**, and **Otros estados** have their own views. **Con oferta** displays the existing `oferta` state reached through **¡Recibí oferta!**; it means an offer was received, not that it was formally accepted. **Rechazadas** and **Descartadas** display their existing states separately. **Otros estados** shows records saved by older versions without changing them. Search and sorting cover the full saved pipeline, while the dynamic **Ver N más** control loads the next matching page; the registered-vacancy counter reports the full total, not only the current page.
+
+### Synthetic functional-analyst dashboard test
+
+To test the dashboard with more than 200 offers without using anyone's real pipeline, run the generator once per checkout. It creates 301 entirely fictitious offers, a fictitious analyst profile, and a disabled scheduler configuration under `src/data/mock-analista-funcional/`. These files are ignored by Git, and the generator refuses to replace an existing mock.
+
+In PowerShell, from the repository root:
+
+```powershell
+node scripts/generate-functional-analyst-mock.mjs # Skip if already generated
+node node_modules/typescript/bin/tsc
+$env:JOB_HUNTER_DATA_DIR = (Resolve-Path 'src/data/mock-analista-funcional').ProviderPath
+$env:JOB_HUNTER_DB_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'db.json'
+$env:PROFILE_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'profile.json'
+$env:SCHEDULER_CONFIG_PATH = Join-Path $env:JOB_HUNTER_DATA_DIR 'scheduler-config.json'
+$env:SCHEDULER_ENABLED = 'false'
+$env:PORT = '3001'
+node build/bin/http.js
+```
+
+Open `http://127.0.0.1:3001`. These overrides keep the demo database, profile, and scheduler configuration separate from the normal app data. The fixture intentionally includes eight legacy-state cards so the **Otros estados** view can also be tested.
+After stopping the server, close that PowerShell window (or remove the six environment variables) before launching your normal setup; otherwise that window will continue pointing at the mock.
 
 ## Use as an MCP server
 
@@ -155,7 +178,7 @@ Point any MCP client at the built server. Example for Claude Desktop / Claude Co
 | `GET` | `/api/discovery/remotive` | Discover jobs from Remotive. |
 | `GET` | `/api/discovery/greenhouse` | Discover jobs from a Greenhouse board. |
 | `GET` | `/api/discovery/lever` | Discover jobs from a Lever board. |
-| `GET` | `/api/pipeline` | Read the pipeline. |
+| `GET` | `/api/pipeline` | Read a pipeline page; supports state filters, search, sorting and `offset`. Returns filtered `total` and unfiltered `allTotal`. |
 | `POST` | `/api/scheduler/run-now` | Trigger a discovery + digest cycle. |
 
 ## Privacy

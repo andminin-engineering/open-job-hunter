@@ -139,7 +139,8 @@ try {
 
   const profileBefore = await fetch(`http://127.0.0.1:${port}/api/profile`);
   const profileBeforePayload = await profileBefore.json();
-  if (!profileBefore.ok || !profileBeforePayload.isPlaceholder) {
+  if (!profileBefore.ok || !profileBeforePayload.isPlaceholder || !profileBeforePayload.isExampleFile
+    || profileBeforePayload.profile.responseLanguage !== "es") {
     throw new Error("El perfil inicial no fue identificado como ejemplo");
   }
 
@@ -168,6 +169,7 @@ try {
     coreCompetencies: { design: ["Figma", "Research"] },
     locations: ["Remote"],
     languages: [{ language: "Spanish", level: "Native" }],
+    responseLanguage: "en",
     search: { keywords: "product designer", minScoreToApply: 70, boards: {} },
   };
   const profileSave = await fetch(`http://127.0.0.1:${port}/api/profile`, {
@@ -177,16 +179,114 @@ try {
   });
   if (!profileSave.ok) throw new Error(`No se pudo guardar el perfil por HTTP: ${profileSave.status}`);
   const savedProfile = JSON.parse(await readFile(profilePath, "utf-8"));
-  if (savedProfile.headline !== candidateProfile.headline) {
+  if (savedProfile.headline !== candidateProfile.headline || savedProfile.responseLanguage !== "en") {
     throw new Error("El perfil guardado por HTTP no se persistio en PROFILE_PATH");
   }
 
   const profileAfterPayload = await fetch(`http://127.0.0.1:${port}/api/profile`).then((response) => response.json());
-  if (profileAfterPayload.isPlaceholder || profileAfterPayload.profile.headline !== candidateProfile.headline) {
+  if (profileAfterPayload.isPlaceholder || profileAfterPayload.isExampleFile
+    || profileAfterPayload.profile.headline !== candidateProfile.headline
+    || profileAfterPayload.profile.responseLanguage !== "en"
+    || profileAfterPayload.profile.languages[0]?.language !== "Spanish") {
     throw new Error("El endpoint de perfil no sirvio los cambios sin reiniciar");
+  }
+  const invalidLanguage = await postJson("/api/profile", { ...candidateProfile, responseLanguage: "fr" }, "PUT");
+  if (invalidLanguage.status !== 400 || JSON.parse(await readFile(profilePath, "utf-8")).responseLanguage !== "en") {
+    throw new Error("Un idioma no soportado no fue rechazado con 400 o modifico el perfil guardado");
   }
   const healthAfterSave = await fetch(`http://127.0.0.1:${port}/health`).then((response) => response.json());
   if (healthAfterSave.profileConfigured !== true) throw new Error("Healthcheck no reflejo el perfil guardado");
+
+  const pipelineRows = Array.from({ length: 227 }, (_, index) => ({
+    id: `runtime-offer-${String(index).padStart(3, "0")}`,
+    oferta: `Vacante de analista funcional número ${index}`,
+    sourcePlatform: "runtime-test",
+    company: index === 219 ? "Empresa Única" : `Empresa ${String(index).padStart(3, "0")}`,
+    estado: index < 220 ? "evaluada"
+      : ["oferta", "descartada", "rechazada", "nueva", "postulada", "aplicada", "entrevista_inicial"][index - 220],
+    evaluacion: index < 220 ? {
+      match_score: index % 100,
+      apply: true,
+      detected_risks: [],
+      strong_points_to_highlight: [],
+      custom_angle: "Prueba",
+    } : undefined,
+    feedbackHistorial: [],
+    fechaProcesado: new Date(1_760_000_000_000 + index * 1000).toISOString(),
+    fechaActualizacion: new Date(1_760_000_000_000 + index * 1000).toISOString(),
+  }));
+  pipelineRows[100].fechaActualizacion = pipelineRows[101].fechaActualizacion;
+  pipelineRows[210].company = "";
+  pipelineRows[211].company = "   ";
+  const seededDatabase = `${JSON.stringify(pipelineRows, null, 2)}\n`;
+  const runtimeDatabasePath = join(dataDir, "db.json");
+  await writeFile(runtimeDatabasePath, seededDatabase, "utf-8");
+  const getPipeline = async (query) => {
+    const response = await fetch(`http://127.0.0.1:${port}/api/pipeline?${query}`);
+    return { status: response.status, payload: await response.json() };
+  };
+  const defaultPage = await getPipeline("");
+  if (defaultPage.status !== 200 || defaultPage.payload.items.length !== 50
+    || defaultPage.payload.total !== 227 || defaultPage.payload.allTotal !== 227
+    || defaultPage.payload.hasMore !== true) {
+    throw new Error("Pipeline perdio la paginacion predeterminada o no informo el total real");
+  }
+  const firstPage = await getPipeline("estado=evaluada&limit=25&offset=0");
+  const lastPage = await getPipeline("estado=evaluada&limit=25&offset=200");
+  if (firstPage.status !== 200 || firstPage.payload.total !== 220 || firstPage.payload.allTotal !== 227
+    || firstPage.payload.items.length !== 25 || firstPage.payload.hasMore !== true
+    || lastPage.payload.items.length !== 20 || lastPage.payload.hasMore !== false
+    || lastPage.payload.total !== 220 || lastPage.payload.items.at(-1)?.id !== "runtime-offer-000") {
+    throw new Error("Pipeline no pagino correctamente las vacantes posteriores al limite anterior de 200");
+  }
+  const grouped = await getPipeline("estados=descartada,rechazada&limit=25");
+  if (grouped.payload.total !== 2 || grouped.payload.allTotal !== 227
+    || !grouped.payload.items.some((item) => item.estado === "rechazada")
+    || !grouped.payload.items.some((item) => item.estado === "descartada")) {
+    throw new Error("Pipeline no agrupo descartadas y rechazadas con sus totales reales");
+  }
+  const unreviewed = await getPipeline("estado=nueva");
+  if (unreviewed.payload.total !== 1 || unreviewed.payload.items[0]?.estado !== "nueva") {
+    throw new Error("Pipeline oculto vacantes nuevas sin evaluar");
+  }
+  const legacy = await getPipeline("estados=aplicada,entrevista_inicial");
+  if (legacy.status !== 200 || legacy.payload.total !== 2 || legacy.payload.allTotal !== 227
+    || !legacy.payload.items.some((item) => item.estado === "aplicada")
+    || !legacy.payload.items.some((item) => item.estado === "entrevista_inicial")) {
+    throw new Error("Pipeline oculto estados heredados de la base anterior");
+  }
+  const legacyWrite = await postJson("/api/postulaciones/runtime-offer-220/estado", { estado: "aplicada" }, "PATCH");
+  if (legacyWrite.status !== 400) throw new Error("La compatibilidad de lectura permitio escribir un estado heredado");
+  const search = await getPipeline("estado=evaluada&q=empresa%20unica");
+  if (search.payload.total !== 1 || search.payload.items[0]?.company !== "Empresa Única"
+    || search.payload.allTotal !== 227) {
+    throw new Error("Pipeline no busco sobre todas las vacantes o altero el total global");
+  }
+  const byScore = await getPipeline("estado=evaluada&sort=score_desc&limit=25");
+  if (byScore.payload.items.length !== 25 || byScore.payload.items.some((item, index, items) =>
+    index > 0 && item.evaluacion.match_score > items[index - 1].evaluacion.match_score)) {
+    throw new Error("Pipeline no ordeno por compatibilidad descendente");
+  }
+  const byCompany = await getPipeline("estado=evaluada&sort=company_asc&limit=1");
+  if (byCompany.payload.items[0]?.company !== "Empresa 000") {
+    throw new Error("Pipeline no ordeno por empresa ascendente");
+  }
+  const withoutCompany = await getPipeline("estado=evaluada&sort=company_asc&offset=218&limit=2");
+  if (withoutCompany.payload.items.map((item) => item.id).join(",") !== "runtime-offer-211,runtime-offer-210") {
+    throw new Error("Pipeline no dejo empresas vacias al final con desempate estable");
+  }
+  const tiedDates = await getPipeline("estado=evaluada&sort=updated_desc&offset=118&limit=2");
+  if (tiedDates.payload.items.map((item) => item.id).join(",") !== "runtime-offer-100,runtime-offer-101") {
+    throw new Error("Pipeline no desempato por ID cuando coincide la fecha");
+  }
+  const invalidQueries = ["offset=-1", "offset=1.5", "estados=desconocida", "estados=", "sort=otro", "estado=evaluada&estados=oferta"];
+  const invalidResults = await Promise.all(invalidQueries.map(getPipeline));
+  for (const [index, invalid] of invalidResults.entries()) {
+    if (invalid.status !== 400) throw new Error(`Pipeline acepto el parametro invalido ${invalidQueries[index]}: ${invalid.status}`);
+  }
+  if (await readFile(runtimeDatabasePath, "utf-8") !== seededDatabase) {
+    throw new Error("Las consultas del pipeline modificaron la base de datos");
+  }
 
   const evaluationWithoutOllama = await fetch(`http://127.0.0.1:${port}/api/evaluar`, {
     method: "POST",
@@ -254,6 +354,7 @@ try {
   console.log("OK  HTTP y MCP rechazaron evaluar con el perfil de ejemplo");
   console.log("OK  un perfil invalido fue rechazado sin escribirse");
   console.log("OK  perfil HTTP se guardo, persistio y recargo sin reiniciar");
+  console.log("OK  pipeline pagino mas de 200 vacantes con totales, filtros, orden y estados completos");
   console.log("OK  healthcheck reporto perfil y Ollama");
   console.log("OK  Ollama ausente produjo un diagnostico HTTP 503");
   console.log("OK  dashboard incluyo escape de contenido y validacion de URLs");

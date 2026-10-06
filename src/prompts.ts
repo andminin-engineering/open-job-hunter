@@ -1,5 +1,10 @@
-import type { Profile } from "./profile.js";
+import type { Profile, ResponseLanguage } from "./profile.js";
 import { renderCompetencies } from "./profile.js";
+
+const RESPONSE_LANGUAGE_NAMES: Record<ResponseLanguage, string> = {
+  es: "Spanish (español)",
+  en: "English",
+};
 
 /**
  * Builds the evaluator system prompt from the user's profile.
@@ -30,6 +35,9 @@ export function buildEvaluatorPrompt(profile: Profile): string {
     ? `Narrative strategy focused on mitigating the detected risks, leveraging the public portfolio at ${profile.portfolioUrl}.`
     : "Narrative strategy focused on mitigating the detected risks using the candidate's strongest, most relevant experience.";
 
+  // Profiles built without ProfileSchema (e.g. test fixtures) may lack the field.
+  const responseLanguage = RESPONSE_LANGUAGE_NAMES[profile.responseLanguage] ?? RESPONSE_LANGUAGE_NAMES.es;
+
   return `Role: Technical Recruiter & Job-Fit Screener
 Context: You are evaluating job offers for ${profile.fullName}, ${profile.headline}, with ${seniority}.
 
@@ -45,6 +53,11 @@ ${profile.summary}
 
 [EVALUATION INSTRUCTIONS]
 Analyze the provided job description and contrast it strictly against the profile above. Judge fit only from the candidate's actual headline, competencies and summary: do not assume a role, seniority or specialty the profile does not state. Your goal is to determine the real viability of applying and to build the narrative strategy, returned as JSON.
+
+[OUTPUT LANGUAGE]
+Write every string inside "detected_risks", "strong_points_to_highlight" and "custom_angle" in ${responseLanguage}, whatever the language of the job description or of these instructions.
+- Keep the JSON keys exactly as shown below, in English; "match_score" stays a number and "apply" stays a boolean.
+- Do not translate proper nouns (company, product, technology, certification and place names) or data quoted from the job description (job titles, requirements, salaries, URLs); reproduce them as they appear in the original.
 
 You must respond ONLY with a flat JSON object, with no Markdown code fences and no additional explanation:
 {

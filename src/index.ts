@@ -304,6 +304,76 @@ function normalizeLimit(limitRaw: string | null): number {
   return Math.min(200, Math.trunc(parsed));
 }
 
+const PipelineSortSchema = z.enum(["updated_desc", "score_desc", "company_asc"]);
+
+// Read-only filter values: legacy states still present in stored rows must be
+// selectable, but they stay out of EstadoPostulacionSchema so writes reject them.
+const PipelineEstadoFiltroSchema = z.union([
+  EstadoPostulacionSchema,
+  z.enum(["aplicada", "entrevista_inicial"]),
+]);
+
+// New pagination/search params are strict (400 on malformed input); `estado`
+// and `limit` keep their historical lenient parsing for existing clients.
+const PipelineQuerySchema = z
+  .object({
+    estado: PipelineEstadoFiltroSchema.optional(),
+    estados: z
+      .string()
+      .transform((raw) => [...new Set(raw.split(",").map((value) => value.trim()))])
+      .pipe(z.array(PipelineEstadoFiltroSchema).min(1))
+      .optional(),
+    offset: z
+      .string()
+      .regex(/^\d+$/, "offset debe ser un entero no negativo")
+      .transform(Number)
+      .refine(Number.isSafeInteger, "offset fuera de rango")
+      .optional()
+      .default("0"),
+    q: z.string().max(200, "q admite hasta 200 caracteres").optional(),
+    sort: PipelineSortSchema.optional().default("updated_desc"),
+  })
+  .superRefine((value, ctx) => {
+    if (value.estado && value.estados) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["estados"], message: "Usa estado o estados, no ambos" });
+    }
+  });
+
+type PipelineItem = Awaited<ReturnType<typeof listarOfertas>>[number];
+
+function pipelineSearchText(item: PipelineItem): string {
+  return [item.company ?? "", item.sourcePlatform ?? "", item.oferta ?? ""].join("\n");
+}
+
+function compareUpdatedDesc(a: PipelineItem, b: PipelineItem): number {
+  const byDate = b.fechaActualizacion.localeCompare(a.fechaActualizacion);
+  if (byDate !== 0) return byDate;
+  if (a.id < b.id) return -1;
+  if (a.id > b.id) return 1;
+  return 0;
+}
+
+function comparePipelineItems(sort: z.infer<typeof PipelineSortSchema>) {
+  return (a: PipelineItem, b: PipelineItem): number => {
+    if (sort === "score_desc") {
+      // Unscored items sink to the bottom.
+      const scoreA = a.evaluacion?.match_score ?? Number.NEGATIVE_INFINITY;
+      const scoreB = b.evaluacion?.match_score ?? Number.NEGATIVE_INFINITY;
+      if (scoreA !== scoreB) return scoreB > scoreA ? 1 : -1;
+    } else if (sort === "company_asc") {
+      // Items without a company sink to the bottom.
+      const companyA = a.company?.trim() ?? "";
+      const companyB = b.company?.trim() ?? "";
+      const hasCompanyA = companyA.length > 0;
+      const hasCompanyB = companyB.length > 0;
+      if (hasCompanyA !== hasCompanyB) return hasCompanyA ? -1 : 1;
+      const byCompany = companyA.localeCompare(companyB, "es", { sensitivity: "base" });
+      if (byCompany !== 0) return byCompany;
+    }
+    return compareUpdatedDesc(a, b);
+  };
+}
+
 function computeFunnelMetrics(items: Awaited<ReturnType<typeof listarOfertas>>) {
   const postulacionesEnviadas = items.filter((item) =>
     ["postulada", "feedback_recibido", "entrevista", "rechazada", "oferta"].includes(item.estado)
@@ -1412,15 +1482,35 @@ const httpServer = createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && path === "/api/pipeline") {
-      const estadoRaw = url.searchParams.get("estado");
-      const estado = estadoRaw ? EstadoPostulacionSchema.parse(estadoRaw) : undefined;
-      const limit = normalizeLimit(url.searchParams.get("limit"));
-      const items = await listarOfertas(estado);
-      const ordered = [...items]
-        .sort((a, b) => b.fechaActualizacion.localeCompare(a.fechaActualizacion))
-        .slice(0, limit);
+      const params = url.searchParams;
+      const query = PipelineQuerySchema.parse({
+        estado: params.get("estado") || undefined,
+        estados: params.get("estados") ?? undefined,
+        offset: params.get("offset") ?? undefined,
+        q: params.get("q") ?? undefined,
+        sort: params.get("sort") ?? undefined,
+      });
+      const limit = normalizeLimit(params.get("limit"));
+      const estadosFiltro = query.estados ?? (query.estado ? [query.estado] : undefined);
+      const searchTerm = query.q?.trim();
 
-      writeHttpJson(res, 200, { ok: true, total: ordered.length, items: ordered });
+      const all = await listarOfertas();
+      const filtered = all.filter((item) =>
+        (!estadosFiltro || estadosFiltro.includes(item.estado))
+        && (!searchTerm || matchesSearchTerm(pipelineSearchText(item), searchTerm))
+      );
+      filtered.sort(comparePipelineItems(query.sort));
+      const page = filtered.slice(query.offset, query.offset + limit);
+
+      writeHttpJson(res, 200, {
+        ok: true,
+        total: filtered.length,
+        allTotal: all.length,
+        items: page,
+        limit,
+        offset: query.offset,
+        hasMore: query.offset + page.length < filtered.length,
+      });
       return;
     }
 

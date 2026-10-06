@@ -14,12 +14,12 @@ Unsigned beta builds may trigger Windows SmartScreen. A hash and provenance esta
 ## Suggested test
 
 1. Start Open Job Hunter and open **Mi perfil**.
-2. Replace every example value with your own professional information.
+2. Complete the empty **Mi perfil** form with your own professional information and choose the language for the evaluation narrative. The examples beside the fields are guidance, not saved values.
 3. Confirm that the header reports the assistant and local AI as ready.
 4. Search for a role relevant to your profession.
 5. Preview results before selecting **Buscar, evaluar y guardar**.
-6. Add one vacancy manually and review the score, strengths and risks critically.
-7. Move a saved application to another pipeline stage.
+6. Add one vacancy manually and review the score, strengths and risks critically. Check that the narrative appears in your selected response language.
+7. Move a saved application to another pipeline stage. In **Mis postulaciones**, try search and ordering in **Tablero**, where **Con oferta** and **Rechazadas** appear as separate columns. Also open the focused **Con oferta**, **Rechazadas**, **Descartadas**, **Sin evaluar** and **Otros estados** views. If a stage has many vacancies, use its own scroll and **Ver N más**.
 8. Close and reopen the application; confirm that your profile and pipeline remain available.
 
 Source installations can run `npm run doctor` for a local diagnostic. Its output replaces the project location, your home directory and `Users/<name>` or `home/<name>` path segments with placeholders; still review it before pasting it into an issue. Warnings about an example profile or missing Ollama explain optional setup that is still incomplete; `ERROR` entries indicate a broken installation.

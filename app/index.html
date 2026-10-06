@@ -30,7 +30,8 @@
     border-bottom: 3px solid transparent; white-space: nowrap;
   }
   nav.tabs button.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
-  main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  main { max-width: 1680px; margin: 0 auto; padding: 24px; }
+  main > section.view:not(#view-inicio) { max-width: 1152px; margin-inline: auto; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
   .grid { display: grid; gap: 16px; }
   .kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 20px; }
@@ -53,6 +54,7 @@
   label { font-size: .85rem; font-weight: 600; display: block; margin: 0 0 6px; }
   .field { margin-bottom: 14px; }
   .hint { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   /* Onboarding hero */
   .hero { text-align: center; padding: 48px 24px; }
   .hero h1 { font-size: 2rem; }
@@ -63,14 +65,32 @@
     background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700;
   }
   /* Kanban */
-  .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; align-items: start; }
-  .col { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
-  .col h3 { margin: 4px 6px 10px; font-size: .9rem; color: var(--muted); display: flex; justify-content: space-between; }
+  .pipeline-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 14px; }
+  .pipeline-toolbar .field { flex: 1 1 220px; margin: 0; }
+  .pipeline-toolbar .field.sort-field { flex: 0 1 230px; }
+  .pipeline-modes { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 0; border: 0; min-width: 0; }
+  .pipeline-modes button { border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--ink); padding: 8px 12px; font: inherit; cursor: pointer; }
+  .pipeline-modes button.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .pipeline-view-hint { display: block; margin: 4px 0 12px; }
+  .board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .board.single { grid-template-columns: minmax(0, 1fr); }
+  .col { min-width: 0; height: 560px; height: clamp(320px, calc(100dvh - 330px), 700px); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
+  .col h3 { margin: 4px 6px 10px; font-size: .9rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; flex: none; }
+  .col-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 1px 3px; }
+  .col-scroll:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .col-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 8px 4px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: .78rem; }
+  .col-footer button { border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--brand); padding: 5px 8px; cursor: pointer; }
+  .col-footer button:disabled { opacity: .5; cursor: wait; }
+  @media (max-width: 1200px) { .board { grid-template-columns: repeat(3, minmax(0, 1fr)); } .col { height: clamp(240px, calc(50dvh - 80px), 340px); } }
+  @media (max-width: 900px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 620px) { .board { grid-template-columns: minmax(0, 1fr); } .col { height: 260px; } .col-scroll { overscroll-behavior: auto; } }
+  .board.single .col { height: clamp(320px, calc(100dvh - 330px), 700px); }
   .job {
     background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
     font-size: .88rem; box-shadow: 0 1px 2px rgba(20,30,60,.06);
   }
   .job .co { font-weight: 700; }
+  .job .snippet { color: var(--ink); font-size: .8rem; line-height: 1.35; margin: 3px 0; overflow-wrap: anywhere; }
   .job .meta { color: var(--muted); font-size: .78rem; margin: 3px 0; }
   .score { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: .75rem; font-weight: 700; }
   .score.hi { background: #dcfce7; color: #15803d; } .score.mid { background: #fef3c7; color: #b45309; } .score.lo { background: #fee2e2; color: #b91c1c; }
@@ -116,8 +136,8 @@
     Podés seguir organizando tus postulaciones mientras tanto.
   </div>
   <div class="banner-warn" id="profileBanner">
-    <strong id="profileBannerTitle">Todavía estás usando el perfil de ejemplo.</strong>
-    <span id="profileBannerMessage">Las evaluaciones comparan cada aviso con tu perfil: completalo en</span>
+    <strong id="profileBannerTitle">Completá tu perfil antes de evaluar vacantes.</strong>
+    <span id="profileBannerMessage">Las evaluaciones se habilitan cuando guardes tus datos en</span>
     <a href="#" id="goProfile">👤 Mi perfil</a><span id="profileBannerSuffix"> para obtener resultados reales.</span>
   </div>
 
@@ -126,6 +146,20 @@
     <h1>Mis postulaciones</h1>
     <p class="sub">Cada tarjeta es una oportunidad. Movelas de columna a medida que avanza tu proceso.</p>
     <div class="grid kpis" id="kpis"></div>
+    <div class="pipeline-toolbar">
+      <div class="field"><label for="pipelineSearch">Buscar en todas las vacantes</label><input id="pipelineSearch" type="search" maxlength="200" placeholder="Empresa o texto del aviso" /></div>
+      <div class="field sort-field"><label for="pipelineSort">Ordenar por</label><select id="pipelineSort"><option value="updated_desc">Más recientes</option><option value="score_desc">Mayor compatibilidad</option><option value="company_asc">Empresa (A–Z)</option></select></div>
+    </div>
+    <fieldset class="pipeline-modes" id="pipelineModes" aria-label="Vistas de postulaciones">
+      <button type="button" data-pipeline-view="active" class="active" aria-pressed="true">Tablero <span id="activeCount"></span></button>
+      <button type="button" data-pipeline-view="accepted" aria-pressed="false">🏆 Con oferta <span id="acceptedCount"></span></button>
+      <button type="button" data-pipeline-view="rejected" aria-pressed="false">⛔ Rechazadas <span id="rejectedCount"></span></button>
+      <button type="button" data-pipeline-view="discarded" aria-pressed="false">🗂️ Descartadas <span id="discardedCount"></span></button>
+      <button type="button" data-pipeline-view="new" aria-pressed="false">Sin evaluar <span id="newCount"></span></button>
+      <button type="button" data-pipeline-view="legacy" aria-pressed="false">Otros estados <span id="legacyCount"></span></button>
+    </fieldset>
+    <output class="hint pipeline-view-hint" id="pipelineViewHint"></output>
+    <output class="sr-only" id="pipelineStatus" role="status" aria-live="polite"></output>
     <div class="board" id="board"></div>
   </section>
 
@@ -180,25 +214,30 @@
       <form id="profileForm">
         <div class="grid two-col">
           <div class="field"><label for="pName">Nombre completo</label><input id="pName" required minlength="2" /></div>
-          <div class="field"><label for="pHeadline">Título profesional</label><input id="pHeadline" required minlength="2" placeholder="Ej: Diseñadora UX/UI Senior" /></div>
+          <div class="field"><label for="pHeadline">Título profesional</label><input id="pHeadline" required minlength="2" /><div class="hint">Ej.: analista funcional, diseñadora UX o auxiliar administrativo.</div></div>
           <div class="field"><label for="pYears">Años de experiencia</label><input id="pYears" type="number" min="0" max="60" /></div>
           <div class="field"><label for="pSalary">Pretensión salarial (USD/mes)</label><input id="pSalary" type="number" min="1" /></div>
           <div class="field"><label for="pPortfolio">Portfolio / LinkedIn</label><input id="pPortfolio" type="url" placeholder="https://…" /></div>
-          <div class="field"><label for="pLocations">Ubicación / modalidad</label><input id="pLocations" placeholder="Remoto, Argentina" /></div>
+          <div class="field"><label for="pLocations">Ubicación / modalidad</label><input id="pLocations" /><div class="hint">Ej.: remoto, Buenos Aires.</div></div>
         </div>
-        <div class="field"><label for="pSummary">Resumen</label><textarea id="pSummary" required minlength="10" placeholder="2 o 3 frases sobre quién sos y qué problemas resolvés mejor."></textarea></div>
+        <div class="field"><label for="pSummary">Resumen</label><textarea id="pSummary" required minlength="10"></textarea><div class="hint">En 2 o 3 frases, contá tu experiencia, tus fortalezas y el trabajo que buscás.</div></div>
         <div class="field">
           <label for="pSkills">Competencias</label>
-          <textarea id="pSkills" placeholder="herramientas: Figma, Miro&#10;metodologías: Design Thinking, Scrum"></textarea>
-          <div class="hint">Una categoría por línea, con el formato <code>categoría: habilidad, habilidad</code>.</div>
+          <textarea id="pSkills"></textarea>
+          <div class="hint">Una categoría por línea. Ej.: <code>análisis: relevamiento de requisitos, historias de usuario</code>.</div>
         </div>
         <div class="field">
-          <label for="pLanguages">Idiomas</label>
-          <textarea id="pLanguages" style="min-height:70px" placeholder="Español: Nativo&#10;Inglés: B2"></textarea>
-          <div class="hint">Uno por línea, con el formato <code>idioma: nivel</code>.</div>
+          <label for="pLanguages">Idiomas que dominás</label>
+          <textarea id="pLanguages" style="min-height:70px"></textarea>
+          <div class="hint">Uno por línea. Ej.: <code>Español: nativo</code>. Esto describe tus conocimientos, no el idioma de la evaluación.</div>
+        </div>
+        <div class="field">
+          <label for="pResponseLanguage">Idioma de las respuestas</label>
+          <select id="pResponseLanguage"><option value="es">Español</option><option value="en">English</option></select>
+          <div class="hint">Los puntos fuertes, riesgos y enfoque de la evaluación se redactarán en este idioma.</div>
         </div>
         <div class="grid two-col">
-          <div class="field"><label for="pKeywords">Puestos que buscás</label><input id="pKeywords" placeholder="Ej: diseñador UX, product designer" /><div class="hint">Separados por comas. Se usan en «Buscar ofertas».</div></div>
+          <div class="field"><label for="pKeywords">Puestos que buscás</label><input id="pKeywords" /><div class="hint">Separados por comas. Ej.: analista funcional, consultor de procesos. Se usan en «Buscar ofertas».</div></div>
           <div class="field"><label for="pMinScore">Compatibilidad mínima para postular (%)</label><input id="pMinScore" type="number" min="0" max="100" /></div>
         </div>
         <button class="btn" type="submit" id="profileBtn" disabled>Guardar mi perfil</button>
@@ -228,14 +267,23 @@ const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
 const API = LOCAL_HOSTS.has(location.hostname)
   ? location.origin
   : (localStorage.getItem('jobhunter_api') || 'http://localhost:3000');
-const ESTADOS = [
-  { key: 'evaluada',          label: '✅ Listas para postular' },
-  { key: 'postulada',         label: '📨 Postuladas' },
-  { key: 'feedback_recibido', label: '💬 Con respuesta' },
-  { key: 'entrevista',        label: '🗣️ En entrevista' },
-  { key: 'oferta',            label: '🏆 ¡Oferta!' },
-  { key: 'descartada',        label: '🗂️ Descartadas' },
+const PIPELINE_LANES = [
+  { key: 'evaluada', label: '✅ Listas para postular', query: 'estado=evaluada' },
+  { key: 'postulada', label: '📨 Postuladas', query: 'estado=postulada' },
+  { key: 'feedback_recibido', label: '💬 Con respuesta', query: 'estado=feedback_recibido' },
+  { key: 'entrevista', label: '🗣️ En entrevista', query: 'estado=entrevista' },
+  { key: 'oferta', label: '🏆 Con oferta', query: 'estado=oferta' },
+  { key: 'rechazada', label: '⛔ Rechazadas', query: 'estado=rechazada' },
+  { key: 'descartada', label: '🗂️ Descartadas', query: 'estado=descartada' },
+  { key: 'nueva', label: 'Sin evaluar', query: 'estado=nueva' },
+  { key: 'legacy', label: 'Otros estados', query: 'estados=aplicada,entrevista_inicial' },
 ];
+const PIPELINE_PAGE_SIZE = 25;
+const IN_PROGRESS_LANE_KEYS = ['evaluada', 'postulada', 'feedback_recibido', 'entrevista'];
+const BOARD_LANE_KEYS = [...IN_PROGRESS_LANE_KEYS, 'oferta', 'rechazada'];
+const PIPELINE_VIEW_TO_LANE = {
+  accepted: 'oferta', rejected: 'rechazada', discarded: 'descartada', new: 'nueva', legacy: 'legacy',
+};
 const NEXT_ACTIONS = {
   evaluada:          [['postulada', 'Ya postulé'], ['descartada', 'Descartar']],
   postulada:         [['feedback_recibido', 'Me respondieron'], ['rechazada', 'Me rechazaron']],
@@ -284,13 +332,13 @@ async function checkHealth() {
   $('aiHint').textContent = aiHint;
   const showProfileBanner = online && health && (health.profileConfigured === false || profileErrorHint);
   $('profileBanner').style.display = showProfileBanner ? 'block' : 'none';
-  $('profileBannerTitle').textContent = profileErrorHint ? 'No se pudo leer tu perfil.' : 'Todavía estás usando el perfil de ejemplo.';
+  $('profileBannerTitle').textContent = profileErrorHint ? 'No se pudo leer tu perfil.' : 'Completá tu perfil antes de evaluar vacantes.';
   if (profileErrorHint) {
     $('profileBannerMessage').textContent = `${profileErrorHint} Corregí o eliminá el archivo de perfil para volver a configurarlo; la aplicación no lo sobrescribirá.`;
     $('goProfile').style.display = 'none';
     $('profileBannerSuffix').style.display = 'none';
   } else {
-    $('profileBannerMessage').textContent = 'Las evaluaciones comparan cada aviso con tu perfil: completalo en';
+    $('profileBannerMessage').textContent = 'Las evaluaciones se habilitan cuando guardes tus datos en';
     $('goProfile').style.display = '';
     $('profileBannerSuffix').style.display = '';
   }
@@ -317,46 +365,205 @@ function jobCard(item) {
     .map(([estado, label]) => `<button data-id="${esc(item.id)}" data-estado="${esc(estado)}">${esc(label)}</button>`).join('');
   const url = safeUrl(item.jobUrl);
   const link = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">ver aviso ↗</a>` : '';
+  const description = String(item.oferta || '').replace(/\s+/g, ' ').trim();
+  const snippet = description.length > 105 ? description.slice(0, 105).trimEnd() + '…' : description;
+  const archiveStatus = {
+    rechazada: ' · Rechazada', descartada: ' · Descartada',
+    aplicada: ' · Aplicada (estado anterior)', entrevista_inicial: ' · Entrevista inicial (estado anterior)',
+  }[item.estado] || '';
+  const updated = item.fechaActualizacion ? ' · ' + String(item.fechaActualizacion).slice(0, 10) : '';
   return `<div class="job">
     <div class="co">${esc(item.company || 'Empresa sin nombre')}</div>
-    <div class="meta">${esc(item.sourcePlatform)} ${item.expectedSalaryRange ? '· ' + esc(item.expectedSalaryRange) : ''}</div>
+    ${snippet ? `<div class="snippet">${esc(snippet)}</div>` : ''}
+    <div class="meta">${esc(item.sourcePlatform)}${esc(archiveStatus)} ${item.expectedSalaryRange ? '· ' + esc(item.expectedSalaryRange) : ''}${esc(updated)}</div>
     <div>${scoreBadge(item.evaluacion)} ${link}</div>
     <div class="actions">${acts}</div>
   </div>`;
 }
+let pipelineView = 'active';
+let pipelineData = {};
+let pipelineQuery = '';
+let pipelineSort = 'updated_desc';
+let pipelineRequest = 0;
+let pipelineRefreshing = false;
+let pipelineScrollPositions = {};
+let pipelineSearchTimer;
+function visiblePipelineLanes() {
+  if (pipelineView === 'active' || !Object.hasOwn(PIPELINE_VIEW_TO_LANE, pipelineView)) {
+    return BOARD_LANE_KEYS.map(key => PIPELINE_LANES.find(lane => lane.key === key)).filter(Boolean);
+  }
+  return PIPELINE_LANES.filter(lane => lane.key === PIPELINE_VIEW_TO_LANE[pipelineView]);
+}
+async function fetchPipelinePage(lane, offset, limit = PIPELINE_PAGE_SIZE, query = pipelineQuery, sort = pipelineSort) {
+  const params = new URLSearchParams(lane.query);
+  params.set('limit', String(limit));
+  params.set('offset', String(offset));
+  params.set('sort', sort);
+  if (query) params.set('q', query);
+  const response = await fetch(API + '/api/pipeline?' + params);
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.ok) throw new Error(data?.error || `respuesta HTTP ${response.status}`);
+  return data;
+}
+async function fetchPipelineLane(lane, desiredCount, query, sort) {
+  const first = await fetchPipelinePage(lane, 0, Math.min(200, desiredCount), query, sort);
+  let page = first;
+  const items = [...first.items];
+  let nextOffset = first.offset + first.items.length;
+  while (page.hasMore && items.length < desiredCount) {
+    page = await fetchPipelinePage(lane, nextOffset, Math.min(200, desiredCount - items.length), query, sort);
+    if (!page.items.length) return { ...page, hasMore: false, items, nextOffset };
+    items.push(...page.items);
+    nextOffset = page.offset + page.items.length;
+  }
+  return { ...page, items, nextOffset };
+}
+function renderPipelineModes() {
+  const count = key => pipelineData[key]?.total ?? 0;
+  $('activeCount').textContent = `(${IN_PROGRESS_LANE_KEYS.reduce((sum, key) => sum + count(key), 0)} en curso)`;
+  $('acceptedCount').textContent = `(${count('oferta')})`;
+  $('rejectedCount').textContent = `(${count('rechazada')})`;
+  $('discardedCount').textContent = `(${count('descartada')})`;
+  $('newCount').textContent = `(${count('nueva')})`;
+  $('legacyCount').textContent = `(${count('legacy')})`;
+  const viewHints = {
+    accepted: 'Vacantes en las que marcaste «¡Recibí oferta!».',
+    rejected: 'Vacantes marcadas con «Me rechazaron» o «No avanzó».',
+    discarded: 'Vacantes que descartaste vos; no incluye rechazos de la empresa.',
+    legacy: 'Registros de versiones anteriores. Se muestran sin modificar su estado.',
+  };
+  $('pipelineViewHint').textContent = Object.hasOwn(viewHints, pipelineView) ? viewHints[pipelineView] : '';
+  $('pipelineModes').querySelectorAll('button[data-pipeline-view]').forEach(button => {
+    const selected = button.dataset.pipelineView === pipelineView;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
+function renderPipelineBoard(preserveScroll = true) {
+  const board = $('board');
+  if (preserveScroll) {
+    board.querySelectorAll('.col-scroll').forEach(el => { pipelineScrollPositions[el.dataset.lane] = el.scrollTop; });
+  } else {
+    pipelineScrollPositions = {};
+  }
+  const lanes = visiblePipelineLanes();
+  board.classList.toggle('single', lanes.length === 1);
+  board.innerHTML = lanes.map(lane => {
+    const data = pipelineData[lane.key] || { items: [], total: 0, hasMore: false };
+    const headingId = `lane-heading-${lane.key}`;
+    const total = Number(data.total) || 0;
+    const totalLabel = total === 1 ? 'vacante' : 'vacantes';
+    const emptyMessage = pipelineQuery ? 'Sin resultados para la búsqueda' : 'Nada por aquí todavía';
+    const content = data.items.length ? data.items.map(jobCard).join('') : `<div class="empty">${emptyMessage}</div>`;
+    return `<div class="col" data-lane="${lane.key}"><h3 id="${headingId}">${esc(lane.label)}<span>${total} ${totalLabel}</span></h3>
+      <div class="col-scroll" data-lane="${lane.key}" role="region" aria-labelledby="${headingId}" tabindex="0">
+        ${content}
+      </div>
+      <div class="col-footer"><span>${data.items.length} de ${total}</span>
+        ${data.hasMore ? `<button type="button" data-load-more="${lane.key}">Ver ${Math.min(PIPELINE_PAGE_SIZE, total - data.items.length)} más</button>` : ''}
+      </div></div>`;
+  }).join('');
+  board.querySelectorAll('.col-scroll').forEach(el => { el.scrollTop = pipelineScrollPositions[el.dataset.lane] || 0; });
+}
 async function loadPipeline() {
-  if (!await checkHealth()) return;
+  const requestId = ++pipelineRequest;
+  pipelineRefreshing = true;
+  $('board').querySelectorAll('button[data-load-more]').forEach(button => { button.disabled = true; });
   try {
-    const [pipeRes, funnelRes] = await Promise.all([
-      fetch(API + '/api/pipeline?limit=200').then(r => r.json()),
+    if (!await checkHealth() || requestId !== pipelineRequest) return;
+    const query = $('pipelineSearch').value.trim();
+    const sort = $('pipelineSort').value;
+    const filtersChanged = query !== pipelineQuery || sort !== pipelineSort;
+    const desired = Object.fromEntries(PIPELINE_LANES.map(lane => [lane.key,
+      filtersChanged ? PIPELINE_PAGE_SIZE : Math.max(PIPELINE_PAGE_SIZE, pipelineData[lane.key]?.items.length || 0)]));
+    const [pages, funnelRes] = await Promise.all([
+      Promise.all(PIPELINE_LANES.map(lane => fetchPipelineLane(lane, desired[lane.key], query, sort))),
       fetch(API + '/api/metrics/funnel').then(r => r.json()),
     ]);
-    const items = pipeRes.items || [];
+    if (requestId !== pipelineRequest) return;
+    pipelineQuery = query;
+    pipelineSort = sort;
+    pipelineData = Object.fromEntries(PIPELINE_LANES.map((lane, index) => [lane.key, pages[index]]));
     const m = funnelRes.metrics || {};
     $('kpis').innerHTML = `
-      <div class="card kpi"><div class="num">${items.length}</div><div class="lbl">Vacantes registradas</div></div>
+      <div class="card kpi"><div class="num">${Number(pages[0].allTotal) || 0}</div><div class="lbl">Vacantes registradas</div></div>
       <div class="card kpi"><div class="num">${m.postulacionesEnviadas ?? 0}</div><div class="lbl">Postulaciones enviadas</div></div>
       <div class="card kpi"><div class="num">${m.feedbackRecibido ?? 0}</div><div class="lbl">Respuestas recibidas</div></div>
       <div class="card kpi"><div class="num">${m.entrevistasConcretadas ?? 0}</div><div class="lbl">Entrevistas logradas</div></div>`;
-    $('board').innerHTML = ESTADOS.map(col => {
-      const colItems = items.filter(i => i.estado === col.key || (col.key === 'descartada' && i.estado === 'rechazada'));
-      return `<div class="col"><h3>${col.label}<span>${colItems.length}</span></h3>
-        ${colItems.length ? colItems.map(jobCard).join('') : '<div class="empty">Nada por aquí todavía</div>'}</div>`;
-    }).join('');
+    renderPipelineModes();
+    renderPipelineBoard(!filtersChanged);
   } catch (e) { toast('No pude cargar tus postulaciones: ' + e.message); }
+  finally {
+    if (requestId === pipelineRequest) {
+      pipelineRefreshing = false;
+      $('board').querySelectorAll('button[data-load-more]').forEach(button => { button.disabled = false; });
+    }
+  }
 }
-$('board').addEventListener('click', (ev) => {
-  const btn = ev.target.closest('button[data-id]');
-  if (btn) moveJob(btn.dataset.id, btn.dataset.estado);
+async function loadMorePipeline(laneKey, button) {
+  const lane = PIPELINE_LANES.find(item => item.key === laneKey);
+  const current = pipelineData[laneKey];
+  if (pipelineRefreshing || !lane || !current?.hasMore) return;
+  const requestId = pipelineRequest;
+  const restoreFocus = document.activeElement === button;
+  button.disabled = true;
+  try {
+    const next = await fetchPipelinePage(lane, current.nextOffset ?? current.offset + current.items.length);
+    if (requestId !== pipelineRequest || pipelineData[laneKey] !== current) return;
+    const ids = new Set(current.items.map(item => item.id));
+    pipelineData[laneKey] = {
+      ...next,
+      hasMore: next.items.length > 0 && next.hasMore,
+      nextOffset: next.offset + next.items.length,
+      items: [...current.items, ...next.items.filter(item => !ids.has(item.id))],
+    };
+    const added = pipelineData[laneKey].items.length - current.items.length;
+    const laneName = lane.label.replace(/^[^\p{L}\p{N}]+/u, '');
+    renderPipelineModes();
+    renderPipelineBoard();
+    $('pipelineStatus').textContent = added > 0
+      ? `${added} ${added === 1 ? 'vacante más cargada' : 'vacantes más cargadas'} en ${laneName}.`
+      : `No hay más vacantes para cargar en ${laneName}.`;
+    if (restoreFocus && visiblePipelineLanes().some(item => item.key === laneKey)) {
+      const board = $('board');
+      (board.querySelector(`button[data-load-more="${laneKey}"]`)
+        || board.querySelector(`.col-scroll[data-lane="${laneKey}"]`))?.focus();
+    }
+  } catch (e) { button.disabled = false; toast('No pude cargar más vacantes: ' + e.message); }
+}
+$('pipelineModes').addEventListener('click', ev => {
+  const button = ev.target.closest('button[data-pipeline-view]');
+  if (!button) return;
+  const nextView = button.dataset.pipelineView;
+  if (nextView !== 'active' && !Object.hasOwn(PIPELINE_VIEW_TO_LANE, nextView)) return;
+  pipelineView = nextView;
+  renderPipelineModes();
+  renderPipelineBoard();
 });
-async function moveJob(id, estado) {
+$('pipelineSearch').addEventListener('input', () => {
+  clearTimeout(pipelineSearchTimer);
+  pipelineSearchTimer = setTimeout(loadPipeline, 250);
+});
+$('pipelineSort').addEventListener('change', () => {
+  clearTimeout(pipelineSearchTimer);
+  void loadPipeline();
+});
+$('board').addEventListener('click', (ev) => {
+  const more = ev.target.closest('button[data-load-more]');
+  if (more) { void loadMorePipeline(more.dataset.loadMore, more); return; }
+  const btn = ev.target.closest('button[data-id]');
+  if (btn) return moveJob(btn.dataset.id, btn.dataset.estado, btn.closest('.col')?.dataset.lane, document.activeElement === btn);
+});
+async function moveJob(id, estado, laneKey, restoreFocus) {
   try {
     const r = await fetch(`${API}/api/postulaciones/${encodeURIComponent(id)}/estado`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }),
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'no se pudo actualizar');
-    toast('¡Actualizado! 💪'); loadPipeline();
+    toast('¡Actualizado! 💪');
+    await loadPipeline();
+    if (restoreFocus && laneKey) $('board').querySelector(`.col-scroll[data-lane="${laneKey}"]`)?.focus();
   } catch (e) { toast('Error: ' + e.message); }
 }
 
@@ -433,6 +640,7 @@ function fillProfileForm(p) {
   $('pSummary').value = p.summary || '';
   $('pSkills').value = Object.entries(p.coreCompetencies || {}).map(([k, v]) => k + ': ' + v.join(', ')).join('\n');
   $('pLanguages').value = (p.languages || []).map(l => l.language + ': ' + l.level).join('\n');
+  $('pResponseLanguage').value = p.responseLanguage === 'en' ? 'en' : 'es';
   const search = p.search || {};
   $('pKeywords').value = (search.boards && search.boards.remotive && search.boards.remotive.search) || search.keywords || '';
   $('pMinScore').value = search.minScoreToApply ?? 70;
@@ -447,8 +655,11 @@ async function loadProfileForm() {
     const data = await response.json();
     if (!response.ok || !data.ok) throw new Error(data.error || 'no se pudo leer el perfil');
     loadedProfile = data.profile;
-    fillProfileForm(data.profile);
-    $('profileStatus').textContent = '';
+    fillProfileForm(data.isExampleFile ? {} : data.profile);
+    let profileStatus = '';
+    if (data.isExampleFile) profileStatus = 'Completá y guardá tu perfil para habilitar las evaluaciones.';
+    else if (data.isPlaceholder) profileStatus = 'Reemplazá el nombre de ejemplo para habilitar las evaluaciones.';
+    $('profileStatus').textContent = profileStatus;
     $('profileBtn').disabled = false;
     // Example data must never become the search term without the user choosing it.
     if (!data.isPlaceholder && !$('qSearch').value) $('qSearch').value = $('pKeywords').value;
@@ -488,6 +699,7 @@ $('profileForm').addEventListener('submit', async (ev) => {
       const i = line.indexOf(':');
       return i > 0 ? { language: line.slice(0, i).trim(), level: line.slice(i + 1).trim() } : { language: line, level: '' };
     }),
+    responseLanguage: $('pResponseLanguage').value,
     search: {
       keywords,
       minScoreToApply: numberOrUndefined($('pMinScore').value) ?? 70,
@@ -504,8 +716,10 @@ $('profileForm').addEventListener('submit', async (ev) => {
     if (!data.ok) throw new Error(data.error || 'no se pudo guardar');
     loadedProfile = data.profile;
     $('qSearch').value = keywords;
-    $('profileStatus').textContent = 'Perfil guardado ✅';
-    if (data.isPlaceholder) toast('Cambiá «Your Name» por tu nombre para usar tu propio perfil.');
+    $('profileStatus').textContent = data.isPlaceholder
+      ? 'Reemplazá el nombre de ejemplo para habilitar las evaluaciones.'
+      : 'Perfil guardado ✅';
+    if (data.isPlaceholder) toast('Reemplazá el nombre de ejemplo por el tuyo.');
     checkHealth();
   } catch (e) { $('profileStatus').textContent = ''; toast('Error: ' + e.message); }
   finally { $('profileBtn').disabled = loadedProfile === null; }

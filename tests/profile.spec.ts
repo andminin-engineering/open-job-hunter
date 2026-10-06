@@ -35,6 +35,33 @@ describe("candidate profile", () => {
     const { profile: loaded, path } = await profile.loadProfileWithSource();
     expect(path.endsWith("profile.example.json")).toBe(true);
     expect(profile.isPlaceholderProfile(loaded)).toBe(true);
+    expect(loaded.responseLanguage).toBe("es");
+  });
+
+  it("defaults an older profile to Spanish and preserves English independently of spoken languages", async () => {
+    const { profilePath, profile } = await profileModuleAtTemporaryPath();
+    await mkdir(dirname(profilePath), { recursive: true });
+    await writeFile(profilePath, JSON.stringify({
+      ...designer,
+      languages: [{ language: "Spanish", level: "Native" }],
+    }), "utf-8");
+    const legacy = await profile.loadProfile();
+    expect(legacy.responseLanguage).toBe("es");
+
+    const updated = await profile.saveProfile({ ...legacy, responseLanguage: "en" });
+    expect(updated.responseLanguage).toBe("en");
+    expect((await profile.loadProfile()).languages).toEqual([{ language: "Spanish", level: "Native" }]);
+    expect(JSON.parse(await readFile(profilePath, "utf-8"))).toMatchObject({
+      responseLanguage: "en",
+      languages: [{ language: "Spanish", level: "Native" }],
+    });
+  });
+
+  it("rejects unsupported response languages without overwriting the existing profile", async () => {
+    const { profilePath, profile } = await profileModuleAtTemporaryPath();
+    await profile.saveProfile({ ...designer, responseLanguage: "en" });
+    await expect(profile.saveProfile({ ...designer, responseLanguage: "fr" })).rejects.toThrow();
+    expect(JSON.parse(await readFile(profilePath, "utf-8")).responseLanguage).toBe("en");
   });
 
   it("saves to the user profile path and serves the new data without a restart", async () => {
@@ -105,6 +132,20 @@ describe("candidate profile", () => {
     expect(prompt).toContain("Ana Perez, Product Designer");
     expect(prompt).not.toMatch(/architect/i);
     expect(profile.profileSearchKeywords(saved)).toBe("product designer, ux researcher");
+  });
+
+  it("instructs all narrative evaluation fields in the selected language without changing JSON keys", async () => {
+    const { profile } = await profileModuleAtTemporaryPath();
+    const { buildEvaluatorPrompt } = await import("../src/prompts.js");
+    const spanish = buildEvaluatorPrompt(await profile.saveProfile(designer));
+    const english = buildEvaluatorPrompt(await profile.saveProfile({ ...designer, responseLanguage: "en" }));
+
+    for (const [prompt, language] of [[spanish, "Spanish (español)"], [english, "English"]]) {
+      expect(prompt).toContain(`in ${language}, whatever the language of the job description`);
+      expect(prompt).toContain('"detected_risks", "strong_points_to_highlight" and "custom_angle"');
+      expect(prompt).toContain('"match_score" stays a number and "apply" stays a boolean');
+      expect(prompt).toContain("Do not translate proper nouns");
+    }
   });
 });
 
