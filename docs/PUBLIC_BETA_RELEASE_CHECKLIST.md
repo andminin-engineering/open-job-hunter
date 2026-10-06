@@ -8,7 +8,7 @@ This checklist does not authorize a release. The human owner must explicitly app
 - [x] Missing Ollama and missing-model states display actionable guidance.
 - [ ] A clean Windows installation completes the flow in `BETA_TESTING.md`.
 - [x] Installer and portable edition start with isolated data, and silent uninstall removes the temporary installation. User-data retention remains documented separately.
-- [x] Known limitations are recorded in `RELEASE_NOTES_v1.2.0.md`.
+- [x] Known limitations are recorded in `RELEASE_NOTES_v1.2.1.md`.
 
 ## Quality and security
 
@@ -26,13 +26,13 @@ This checklist does not authorize a release. The human owner must explicitly app
 
 ## Release evidence
 
-- [x] Immutable tag `v1.2.0` points to reviewed commit `0635efa081a07ffcf06cda47c0128b72bdb38d35` and matches `package.json`.
-- [x] [GitHub-hosted workflow](https://github.com/andminin-engineering/open-job-hunter/actions/runs/37463765942) built the Windows artifacts from the committed lockfile.
+- [x] Immutable tag `v1.2.1` points to authorized commit `5f7b49e38887aed99f7673471fa4233bdf9da191` and matches `package.json`.
+- [x] [GitHub-hosted workflow](https://github.com/andminin-engineering/open-job-hunter/actions/runs/37542133270) built the Windows artifacts from the committed lockfile.
 - [x] Microsoft Defender scan passed.
 - [x] SHA-256 manifest and CycloneDX SBOM are published beside both executables.
 - [x] Each executable has GitHub build-provenance and SBOM attestations for its published SHA-256 digest.
-- [x] Product and file version metadata match `v1.2.0`.
-- [x] [Release `v1.2.0`](https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.0) is the stable channel and identifies the Windows artifacts as unsigned.
+- [x] Product and file version metadata match `v1.2.1`.
+- [x] [Release `v1.2.1`](https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.1) is the stable channel and identifies the Windows artifacts as unsigned.
 
 ## Community operations
 
@@ -44,7 +44,7 @@ This checklist does not authorize a release. The human owner must explicitly app
 
 ## SignPath readiness
 
-Status: code signing through SignPath Foundation has been requested and is pending approval. The current v1.2.0 Windows executables are unsigned; the items below are readiness checks, not evidence of approval or an active signing service.
+Status: code signing through SignPath Foundation has been requested and is pending approval. The current v1.2.1 Windows executables are unsigned; the items below are readiness checks, not evidence of approval or an active signing service.
 
 - [ ] Repository, release and download surfaces link to the Code signing policy.
 - [ ] Maintainer, reviewer and signing-approver roles are current.

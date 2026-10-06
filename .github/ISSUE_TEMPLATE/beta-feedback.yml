@@ -12,7 +12,7 @@ body:
     attributes:
       label: Open Job Hunter version
       description: Shown in GitHub Releases and in the installer file name.
-      placeholder: v1.2.0
+      placeholder: v1.2.1
     validations:
       required: true
   - type: dropdown

@@ -92,7 +92,7 @@ An old timestamp alone is insufficient to break a lock. A slow but live writer m
 - The desktop renderer uses context isolation, disables Node integration and enables the Chromium sandbox.
 - Navigation outside the local application is blocked; approved HTTP(S) links open in the operating-system browser.
 - Profile and pipeline paths accept only absolute overrides, preventing behavior from changing with an agent client's `cwd`.
-- The current v1.2.0 Windows executables are unsigned. Published SHA-256 digests provide integrity verification. Code signing through SignPath Foundation has been requested and is pending approval.
+- The current v1.2.1 Windows executables are unsigned. Published SHA-256 digests provide integrity verification. Code signing through SignPath Foundation has been requested and is pending approval.
 
 ## Decision records
 
