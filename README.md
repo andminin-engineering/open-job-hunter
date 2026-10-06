@@ -18,9 +18,9 @@ No cloud, no data leaving your machine, no vendor lock-in. You describe yourself
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+Code signing through [SignPath Foundation](https://signpath.org/) has been requested and is pending approval. The current v1.2.0 Windows executables are unsigned. See [SignPath.io](https://signpath.io/) for information about the signing service.
 
-Every signing request requires manual approval and must originate from the repository's verifiable release workflow. See the complete [Code signing policy](./CODE_SIGNING_POLICY.md), [Privacy policy](./PRIVACY.md) and [Security policy](./SECURITY.md).
+If the request is approved, every signing request will require manual approval and must originate from the repository's verifiable release workflow. See the complete [Code signing policy](./CODE_SIGNING_POLICY.md), [Privacy policy](./PRIVACY.md) and [Security policy](./SECURITY.md).
 
 ---
 
@@ -64,7 +64,7 @@ The complete engineering case study is documented in [Architecture and decisions
 
 Download the latest installer or portable build from [GitHub Releases](https://github.com/andminin-engineering/open-job-hunter/releases/latest). No Node.js installation is required. The desktop app stores your profile and pipeline under your Windows user data directory.
 
-> Windows SmartScreen may warn about the first unsigned community release. Verify the published SHA-256 checksum before running it. Code signing is planned for a future release.
+> Windows SmartScreen may warn because the current v1.2.0 Windows executables are unsigned. Verify the published SHA-256 checksum before running them. Code signing has been requested through SignPath Foundation and is pending approval.
 
 Release integrity evidence includes SHA-256 manifests, a CycloneDX SBOM, Microsoft Defender scanning and GitHub/Sigstore attestations. See the [security policy](./SECURITY.md) for verification commands.
 

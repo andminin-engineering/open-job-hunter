@@ -44,6 +44,8 @@ This checklist does not authorize a release. The human owner must explicitly app
 
 ## SignPath readiness
 
+Status: code signing through SignPath Foundation has been requested and is pending approval. The current v1.2.0 Windows executables are unsigned; the items below are readiness checks, not evidence of approval or an active signing service.
+
 - [ ] Repository, release and download surfaces link to the Code signing policy.
 - [ ] Maintainer, reviewer and signing-approver roles are current.
 - [ ] Privacy, security, license and third-party notices are current.

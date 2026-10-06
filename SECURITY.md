@@ -25,4 +25,4 @@ Get-FileHash .\Open-Job-Hunter-Portable-<version>-x64.exe -Algorithm SHA256
 gh attestation verify .\Open-Job-Hunter-Portable-<version>-x64.exe --repo andminin-engineering/open-job-hunter
 ```
 
-Unsigned releases can still trigger Microsoft SmartScreen. Provenance and hashes establish build origin and integrity but do not replace Authenticode publisher identity. Trusted code signing is tracked as the next distribution milestone.
+The current v1.2.0 Windows executables are unsigned and can trigger Microsoft SmartScreen. Provenance and hashes establish build origin and integrity but do not replace Authenticode publisher identity. Code signing through SignPath Foundation has been requested and is pending approval.

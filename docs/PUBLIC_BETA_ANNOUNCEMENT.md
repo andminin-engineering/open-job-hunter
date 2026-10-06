@@ -21,7 +21,7 @@ Buscamos personas de cualquier profesión —no solamente tecnología— que qui
 
 Si el proyecto te resulta útil, una ⭐ en GitHub ayuda a que otras personas lo descubran. La estrella es bienvenida, pero nunca es obligatoria para probar, informar problemas o contribuir.
 
-En paralelo, el proyecto está preparando los controles técnicos y de gobernanza necesarios para solicitar la firma del instalador de Windows mediante SignPath Foundation.
+El proyecto solicitó la firma de código mediante SignPath Foundation y está pendiente de aprobación. Los ejecutables de Windows de v1.2.0 no están firmados.
 
 - Repositorio: https://github.com/andminin-engineering/open-job-hunter
 - Descarga (v1.2.0 estable): https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.0
