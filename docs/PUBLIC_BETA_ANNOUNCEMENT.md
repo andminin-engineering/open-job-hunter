@@ -6,13 +6,15 @@ Estamos abriendo la beta pública de **Open Job Hunter** 🎯
 
 Es una aplicación open source que organiza postulaciones, busca oportunidades y evalúa compatibilidad utilizando IA local con Ollama. El perfil profesional y el historial permanecen en la computadora del usuario.
 
+La nueva versión permite elegir español o inglés para la narrativa de evaluación y ofrece un tablero preparado para historiales grandes: búsqueda, orden, paginación y vistas separadas para procesos en curso, vacantes con oferta, rechazos y descartes. **Con oferta** significa que se recibió una propuesta; no implica que ya fue aceptada.
+
 Buscamos personas de cualquier profesión —no solamente tecnología— que quieran probar el flujo y ayudarnos a detectar sesgos, errores y mejoras de experiencia.
 
 ### Cómo participar
 
 1. Descargá la beta desde la página oficial de GitHub Releases.
 2. Verificá el SHA-256 publicado junto al instalador.
-3. Completá **Mi perfil** y probá una búsqueda o una vacante real.
+3. Completá **Mi perfil**, elegí el idioma de las respuestas y probá una búsqueda o una vacante real.
 4. Compartí una experiencia sin datos personales mediante el formulario de Beta feedback.
 
 Si el proyecto te resulta útil, una ⭐ en GitHub ayuda a que otras personas lo descubran. La estrella es bienvenida, pero nunca es obligatoria para probar, informar problemas o contribuir.

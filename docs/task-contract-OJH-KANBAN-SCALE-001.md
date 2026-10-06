@@ -3,11 +3,11 @@
 ## Baseline y objetivo
 
 - Baseline compartido: `d6105b7aaf9e1d9c179818ed49a16f8db786b88a`.
-- El usuario aprobó: altura adaptable y scroll interno por columna; accesos siempre visibles a Ofertas y Descartadas; búsqueda y orden; carga paginada con total real; tarjetas distinguibles cuando hay varias de la misma empresa.
+- El usuario aprobó: altura adaptable y scroll interno por columna; accesos siempre visibles a Con oferta, Rechazadas y Descartadas; búsqueda y orden; carga paginada con total real; tarjetas distinguibles cuando hay varias de la misma empresa.
 - La copia de la base real del ejecutable confirmó 301 registros, de los cuales 8 usan estados heredados de sólo lectura: `aplicada` (7) y `entrevista_inicial` (1). Deben quedar visibles sin migrar ni alterar la base.
 - La mejora sigue siendo local hasta autorización humana específica de push/merge/release. No ejecutar GitHub Actions manualmente.
 
-> Decisión de producto posterior (2026-10-06): el pedido de UX se amplió después de este contrato inicial. La vista **Tablero** muestra seis columnas: las cuatro en curso, **Con oferta** (`oferta`) y **Rechazadas** (`rechazada`). **Descartadas**, **Sin evaluar** y **Otros estados** tienen vistas enfocadas; Con oferta y Rechazadas también pueden enfocarse por separado. El propietario eligió **Con oferta** porque el estado registra una propuesta recibida, no una aceptación ni un servicio prestado; una aceptación futura debe poder consolidar el historial profesional con significado propio. Las referencias a **Ofertas** y a una vista agrupada **Descartadas/Rechazadas** más abajo describen la propuesta original, no la interfaz final. La API `estados` sigue disponible y se usa para leer estados heredados.
+> Decisión de producto posterior (2026-10-06): el pedido de UX se amplió después de este contrato inicial. El propietario eligió **Con oferta** porque el estado registra una propuesta recibida, no una aceptación ni un servicio prestado; una aceptación futura debe poder consolidar el historial profesional con significado propio.
 
 ## Contrato API acordado
 
@@ -26,13 +26,13 @@ Respuesta: `{ ok: true, total, allTotal, items, limit, offset, hasMore }`. `tota
 
 - Claude Code: sólo `src/index.ts` para el contrato API. Commit local sin push. No editar interfaz ni tests.
 - Codex: `app/index.html`, tests de interfaz e integración HTTP/runtime, y documentación de uso si corresponde. Codex integra y ejecuta los gates; revisa independientemente el backend de Claude.
-- Claude revisa en modo lectura la implementación UI de Codex; Copilot o Cursor puede revisar el diff combinado si está disponible. Nadie aprueba código que editó.
+- Claude revisa en modo lectura la implementación UI de Codex y Codex revisa el backend de Claude. Copilot o Cursor puede revisar el diff combinado si está disponible, pero Cursor no es una puerta obligatoria. Nadie aprueba código que editó y la autorización final de push, merge y release corresponde al propietario humano.
 
 ## Comportamiento de la interfaz
 
-- En escritorio, las cuatro columnas activas quedan en una misma fila; Ofertas, Descartadas/Rechazadas, Sin evaluar (`nueva`) y Otros estados (`aplicada`, `entrevista_inicial`) tienen accesos visibles con contadores y vista propia, sin quedar ocultas debajo de columnas largas.
+- En escritorio, **Tablero** muestra seis columnas: las cuatro etapas en curso, **Con oferta** (`oferta`) y **Rechazadas** (`rechazada`). Con oferta y Rechazadas también tienen vistas enfocadas. **Descartadas**, **Sin evaluar** (`nueva`) y **Otros estados** (`aplicada`, `entrevista_inicial`) tienen accesos visibles con contadores y vista propia.
 - Cada lista usa alto relativo al viewport y scroll interno; encabezado y cantidad permanecen visibles. Las regiones con scroll son accesibles por teclado y tienen nombre accesible.
-- Se cargan páginas por estado/grupo con un control explícito `Ver más`, sin insinuar que sólo existen los elementos cargados. La búsqueda y el orden actúan sobre todos los datos a través de la API, no sólo sobre la página visible.
+- Se cargan páginas por estado/grupo con un control explícito `Ver N más`, donde N refleja los registros restantes hasta el tamaño de página. La búsqueda y el orden actúan sobre todos los datos a través de la API, no sólo sobre la página visible.
 - `Vacantes registradas` usa `allTotal`, no `items.length`; los contadores de columnas usan `total` filtrado. Se diferencia el estado `rechazada` del `descartada` en tarjetas agrupadas.
 - La tarjeta muestra además un fragmento seguro y breve de la descripción para distinguir vacantes de la misma empresa. La interfaz nunca interpreta HTML de fuentes externas.
 - Los cambios de estado refrescan los contadores y las listas sin borrar registros. Diseño usable con ventana pequeña y zoom.
