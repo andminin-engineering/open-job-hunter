@@ -8,7 +8,13 @@ beforeAll(async () => {
   html = await readFile(new URL("../app/index.html", import.meta.url), "utf-8");
 });
 
-function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh?: boolean; evaluatedTotal?: number } = {}) {
+function dashboardWithManyOffers(options: {
+  holdLaterPage?: boolean;
+  holdRefresh?: boolean;
+  evaluatedTotal?: number;
+  newTotal?: number;
+  emptyLaterPage?: boolean;
+} = {}) {
   const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
   if (!script) throw new Error("No se encontró el script del dashboard");
 
@@ -26,7 +32,7 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
     oferta: 1,
     rechazada: 3,
     descartada: 100,
-    nueva: 0,
+    nueva: options.newTotal ?? 0,
     "aplicada,entrevista_inicial": 8,
   };
   let activeElement: unknown;
@@ -35,6 +41,17 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
   let releaseRefresh: (() => void) | undefined;
   let evaluatedFirstPageCalls = 0;
   const focusTarget = { focus() { focusedAfterLoad = true; } };
+  const modeButtons = ["active", "accepted", "rejected", "discarded", "new", "legacy"].map(pipelineView => {
+    let active = false;
+    let ariaPressed = "false";
+    return {
+      dataset: { pipelineView },
+      classList: { toggle(_name: string, selected: boolean) { active = selected; } },
+      setAttribute(_name: string, value: string) { ariaPressed = value; },
+      isActive: () => active,
+      getAriaPressed: () => ariaPressed,
+    };
+  });
 
   function makeElement(id: string) {
     return {
@@ -49,7 +66,7 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
       scrollTop: 0,
       classList: { add() {}, remove() {}, toggle() {} },
       setAttribute() {},
-      querySelectorAll: () => [],
+      querySelectorAll: (selector: string) => id === "pipelineModes" && selector === "button[data-pipeline-view]" ? modeButtons : [],
       querySelector: (selector: string) => id === "board" && selector.includes('data-load-more="evaluada"') ? focusTarget : null,
       focus() { activeElement = this; },
       addEventListener(event: string, handler: (event: unknown) => unknown) { handlers.set(`${id}:${event}`, handler); },
@@ -89,6 +106,12 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
       await new Promise<void>((resolve) => { releaseRefresh = resolve; });
     }
     const total = query ? (lane === "evaluada" ? 2 : 0) : (stateTotals[lane ?? ""] ?? 0);
+    if (options.emptyLaterPage && lane === "evaluada" && offset === 25) {
+      return {
+        ok: true,
+        json: async () => ({ ok: true, allTotal, total, items: [], limit, offset, hasMore: true }),
+      };
+    }
     const count = Math.min(limit, Math.max(0, total - offset));
     const items = Array.from({ length: count }, (_, index) => ({
       id: `${lane}-${offset + index}`,
@@ -124,6 +147,7 @@ function dashboardWithManyOffers(options: { holdLaterPage?: boolean; holdRefresh
 
   return {
     element, urls, patches, handlers, load: dashboard.loadPipeline, loadMore: dashboard.loadMorePipeline,
+    modeButton: (view: string) => modeButtons.find(button => button.dataset.pipelineView === view)!,
     setActiveElement: (value: unknown) => { activeElement = value; },
     wasFocusRestored: () => focusedAfterLoad,
     releaseLaterPage: () => releaseLaterPage?.(),
@@ -153,7 +177,7 @@ describe("scalable dashboard pipeline", () => {
     expect(html).toContain('role="region" aria-labelledby="${headingId}" tabindex="0"');
     expect(html).toContain('<fieldset class="pipeline-modes" id="pipelineModes" aria-label="Vistas de postulaciones">');
     expect(html).toContain('<output class="hint pipeline-view-hint" id="pipelineViewHint"></output>');
-    expect(html).toContain('class="col-footer"><span aria-live="polite"');
+    expect(html).toContain('id="pipelineStatus" role="status" aria-live="polite"');
     expect(html.indexOf('id="pipelineModes"')).toBeLessThan(html.indexOf('id="board"'));
   });
 
@@ -163,6 +187,9 @@ describe("scalable dashboard pipeline", () => {
 
     expect(page.element("kpis").innerHTML).toContain('class="num">238</div>');
     expect(page.element("activeCount").textContent).toBe("(126 en curso)");
+    expect(page.modeButton("active").isActive()).toBe(true);
+    expect(page.modeButton("active").getAriaPressed()).toBe("true");
+    expect(page.modeButton("accepted").getAriaPressed()).toBe("false");
     expect(page.element("acceptedCount").textContent).toBe("(1)");
     expect(page.element("rejectedCount").textContent).toBe("(3)");
     expect(page.element("discardedCount").textContent).toBe("(100)");
@@ -174,13 +201,17 @@ describe("scalable dashboard pipeline", () => {
     expect(page.element("board").innerHTML.match(/class="col" data-lane=/g)).toHaveLength(6);
     expect([...page.element("board").innerHTML.matchAll(/class="col" data-lane="([^"]+)"/g)].map(match => match[1]))
       .toEqual(["evaluada", "postulada", "feedback_recibido", "entrevista", "oferta", "rechazada"]);
-    expect(page.element("board").innerHTML).toContain('data-lane="oferta"><h3 id="lane-heading-oferta">🏆 Aceptadas');
+    expect(page.element("board").innerHTML).toContain('data-lane="oferta"><h3 id="lane-heading-oferta">🏆 Con oferta');
     expect(page.element("board").innerHTML).toContain('data-lane="rechazada"><h3 id="lane-heading-rechazada">⛔ Rechazadas');
     expect(page.element("board").innerHTML).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(page.element("board").innerHTML).not.toContain("<img src=x");
 
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "accepted" } }) } });
-    expect(page.element("board").innerHTML).toContain("🏆 Aceptadas");
+    expect(page.modeButton("active").isActive()).toBe(false);
+    expect(page.modeButton("active").getAriaPressed()).toBe("false");
+    expect(page.modeButton("accepted").isActive()).toBe(true);
+    expect(page.modeButton("accepted").getAriaPressed()).toBe("true");
+    expect(page.element("board").innerHTML).toContain("🏆 Con oferta");
     expect(page.element("board").innerHTML).toContain("1 vacante</span>");
     expect(page.element("pipelineViewHint").textContent).toContain("¡Recibí oferta!");
     expect(page.element("board").innerHTML).not.toContain("✅ Listas para postular");
@@ -199,6 +230,7 @@ describe("scalable dashboard pipeline", () => {
     expect(page.element("board").innerHTML).not.toContain("Rechazada");
     await page.loadMore("descartada", { disabled: false });
     expect(page.element("board").innerHTML).toContain("50 de 100");
+    expect(page.element("pipelineStatus").textContent).toContain("25 vacantes más cargadas en Descartadas");
 
     page.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "offers" } }) } });
     expect(page.element("board").innerHTML).toContain("🗂️ Descartadas");
@@ -219,9 +251,9 @@ describe("scalable dashboard pipeline", () => {
     expect(accepted.patches).toEqual([{ id: "entrevista-0", estado: "oferta" }]);
     expect(accepted.element("activeCount").textContent).toBe("(125 en curso)");
     expect(accepted.element("acceptedCount").textContent).toBe("(2)");
-    expect(accepted.element("board").innerHTML).toContain('data-lane="oferta"><h3 id="lane-heading-oferta">🏆 Aceptadas<span>2 vacantes</span>');
+    expect(accepted.element("board").innerHTML).toContain('data-lane="oferta"><h3 id="lane-heading-oferta">🏆 Con oferta<span>2 vacantes</span>');
     accepted.handlers.get("pipelineModes:click")!({ target: { closest: () => ({ dataset: { pipelineView: "accepted" } }) } });
-    expect(accepted.element("board").innerHTML).toContain("🏆 Aceptadas");
+    expect(accepted.element("board").innerHTML).toContain("🏆 Con oferta");
     expect(accepted.element("board").innerHTML).toContain("2 vacantes</span>");
 
     const rejected = dashboardWithManyOffers();
@@ -302,9 +334,11 @@ describe("scalable dashboard pipeline", () => {
   it("keeps more than 200 loaded offers visible after a refresh", async () => {
     const page = dashboardWithManyOffers({ evaluatedTotal: 220 });
     await page.load();
-    for (let index = 0; index < 8; index += 1) {
+    for (let index = 0; index < 7; index += 1) {
       await page.loadMore("evaluada", { disabled: false });
     }
+    expect(page.element("board").innerHTML).toContain('data-load-more="evaluada">Ver 20 más</button>');
+    await page.loadMore("evaluada", { disabled: false });
     expect(page.element("board").innerHTML).toContain("220 de 220");
 
     await page.load();
@@ -313,5 +347,18 @@ describe("scalable dashboard pipeline", () => {
       && url.searchParams.get("offset") === "200" && url.searchParams.get("limit") === "20")).toBe(true);
     expect(page.element("board").innerHTML).toContain("220 de 220");
     expect(page.element("kpis").innerHTML).toContain('class="num">353</div>');
+  });
+
+  it("stops offering the same page after an inconsistent empty response and announces labels without emoji", async () => {
+    const empty = dashboardWithManyOffers({ emptyLaterPage: true });
+    await empty.load();
+    await empty.loadMore("evaluada", { disabled: false });
+    expect(empty.element("board").innerHTML).not.toContain('data-load-more="evaluada"');
+    expect(empty.element("pipelineStatus").textContent).toBe("No hay más vacantes para cargar en Listas para postular.");
+
+    const withoutEmoji = dashboardWithManyOffers({ newTotal: 30 });
+    await withoutEmoji.load();
+    await withoutEmoji.loadMore("nueva", { disabled: false });
+    expect(withoutEmoji.element("pipelineStatus").textContent).toBe("5 vacantes más cargadas en Sin evaluar.");
   });
 });

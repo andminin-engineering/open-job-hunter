@@ -54,6 +54,7 @@
   label { font-size: .85rem; font-weight: 600; display: block; margin: 0 0 6px; }
   .field { margin-bottom: 14px; }
   .hint { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   /* Onboarding hero */
   .hero { text-align: center; padding: 48px 24px; }
   .hero h1 { font-size: 2rem; }
@@ -151,13 +152,14 @@
     </div>
     <fieldset class="pipeline-modes" id="pipelineModes" aria-label="Vistas de postulaciones">
       <button type="button" data-pipeline-view="active" class="active" aria-pressed="true">Tablero <span id="activeCount"></span></button>
-      <button type="button" data-pipeline-view="accepted" aria-pressed="false">🏆 Aceptadas <span id="acceptedCount"></span></button>
+      <button type="button" data-pipeline-view="accepted" aria-pressed="false">🏆 Con oferta <span id="acceptedCount"></span></button>
       <button type="button" data-pipeline-view="rejected" aria-pressed="false">⛔ Rechazadas <span id="rejectedCount"></span></button>
       <button type="button" data-pipeline-view="discarded" aria-pressed="false">🗂️ Descartadas <span id="discardedCount"></span></button>
       <button type="button" data-pipeline-view="new" aria-pressed="false">Sin evaluar <span id="newCount"></span></button>
       <button type="button" data-pipeline-view="legacy" aria-pressed="false">Otros estados <span id="legacyCount"></span></button>
     </fieldset>
     <output class="hint pipeline-view-hint" id="pipelineViewHint"></output>
+    <output class="sr-only" id="pipelineStatus" role="status" aria-live="polite"></output>
     <div class="board" id="board"></div>
   </section>
 
@@ -270,7 +272,7 @@ const PIPELINE_LANES = [
   { key: 'postulada', label: '📨 Postuladas', query: 'estado=postulada' },
   { key: 'feedback_recibido', label: '💬 Con respuesta', query: 'estado=feedback_recibido' },
   { key: 'entrevista', label: '🗣️ En entrevista', query: 'estado=entrevista' },
-  { key: 'oferta', label: '🏆 Aceptadas', query: 'estado=oferta' },
+  { key: 'oferta', label: '🏆 Con oferta', query: 'estado=oferta' },
   { key: 'rechazada', label: '⛔ Rechazadas', query: 'estado=rechazada' },
   { key: 'descartada', label: '🗂️ Descartadas', query: 'estado=descartada' },
   { key: 'nueva', label: 'Sin evaluar', query: 'estado=nueva' },
@@ -410,7 +412,7 @@ async function fetchPipelineLane(lane, desiredCount, query, sort) {
   let nextOffset = first.offset + first.items.length;
   while (page.hasMore && items.length < desiredCount) {
     page = await fetchPipelinePage(lane, nextOffset, Math.min(200, desiredCount - items.length), query, sort);
-    if (!page.items.length) break;
+    if (!page.items.length) return { ...page, hasMore: false, items, nextOffset };
     items.push(...page.items);
     nextOffset = page.offset + page.items.length;
   }
@@ -457,8 +459,8 @@ function renderPipelineBoard(preserveScroll = true) {
       <div class="col-scroll" data-lane="${lane.key}" role="region" aria-labelledby="${headingId}" tabindex="0">
         ${content}
       </div>
-      <div class="col-footer"><span aria-live="polite">${data.items.length} de ${total}</span>
-        ${data.hasMore ? `<button type="button" data-load-more="${lane.key}">Ver ${PIPELINE_PAGE_SIZE} más</button>` : ''}
+      <div class="col-footer"><span>${data.items.length} de ${total}</span>
+        ${data.hasMore ? `<button type="button" data-load-more="${lane.key}">Ver ${Math.min(PIPELINE_PAGE_SIZE, total - data.items.length)} más</button>` : ''}
       </div></div>`;
   }).join('');
   board.querySelectorAll('.col-scroll').forEach(el => { el.scrollTop = pipelineScrollPositions[el.dataset.lane] || 0; });
@@ -511,11 +513,17 @@ async function loadMorePipeline(laneKey, button) {
     const ids = new Set(current.items.map(item => item.id));
     pipelineData[laneKey] = {
       ...next,
+      hasMore: next.items.length > 0 && next.hasMore,
       nextOffset: next.offset + next.items.length,
       items: [...current.items, ...next.items.filter(item => !ids.has(item.id))],
     };
+    const added = pipelineData[laneKey].items.length - current.items.length;
+    const laneName = lane.label.replace(/^[^\p{L}\p{N}]+/u, '');
     renderPipelineModes();
     renderPipelineBoard();
+    $('pipelineStatus').textContent = added > 0
+      ? `${added} ${added === 1 ? 'vacante más cargada' : 'vacantes más cargadas'} en ${laneName}.`
+      : `No hay más vacantes para cargar en ${laneName}.`;
     if (restoreFocus && visiblePipelineLanes().some(item => item.key === laneKey)) {
       const board = $('board');
       (board.querySelector(`button[data-load-more="${laneKey}"]`)

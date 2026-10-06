@@ -7,6 +7,8 @@
 - La copia de la base real del ejecutable confirmó 301 registros, de los cuales 8 usan estados heredados de sólo lectura: `aplicada` (7) y `entrevista_inicial` (1). Deben quedar visibles sin migrar ni alterar la base.
 - La mejora sigue siendo local hasta autorización humana específica de push/merge/release. No ejecutar GitHub Actions manualmente.
 
+> Decisión de producto posterior (2026-10-06): el pedido de UX se amplió después de este contrato inicial. La vista **Tablero** muestra seis columnas: las cuatro en curso, **Con oferta** (`oferta`) y **Rechazadas** (`rechazada`). **Descartadas**, **Sin evaluar** y **Otros estados** tienen vistas enfocadas; Con oferta y Rechazadas también pueden enfocarse por separado. El propietario eligió **Con oferta** porque el estado registra una propuesta recibida, no una aceptación ni un servicio prestado; una aceptación futura debe poder consolidar el historial profesional con significado propio. Las referencias a **Ofertas** y a una vista agrupada **Descartadas/Rechazadas** más abajo describen la propuesta original, no la interfaz final. La API `estados` sigue disponible y se usa para leer estados heredados.
+
 ## Contrato API acordado
 
 `GET /api/pipeline` conserva su uso actual y acepta además:
