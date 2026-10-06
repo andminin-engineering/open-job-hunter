@@ -32,4 +32,12 @@ Open Job Hunter no automatiza postulaciones ni reemplaza el criterio profesional
 
 ## Publication record
 
-Before publishing, record the approved release tag, exact commit, publication channels, publication date and accountable human owner here or in the release evidence. Replace every placeholder and verify each link from a signed-out browser session.
+- Release: [Open Job Hunter v1.2.0](https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.0)
+- Tag: `v1.2.0`
+- Source commit: `0635efa081a07ffcf06cda47c0128b72bdb38d35`
+- Published: 2026-10-06
+- Channel: stable GitHub Release; the public beta remains the feedback program.
+- Accountable human owner: Andrea Minín / `andminin-engineering`
+- Verification: [release workflow](https://github.com/andminin-engineering/open-job-hunter/actions/runs/37463765942), Microsoft Defender, SHA-256 manifest, CycloneDX SBOM and GitHub attestations.
+
+The release, guide, feedback form and `/releases/latest` link were checked after publication. Before posting to another channel, open its final links from a signed-out browser session.
