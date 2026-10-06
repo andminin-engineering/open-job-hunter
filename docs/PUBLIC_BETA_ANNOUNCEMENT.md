@@ -22,7 +22,7 @@ Si el proyecto te resulta útil, una ⭐ en GitHub ayuda a que otras personas lo
 En paralelo, el proyecto está preparando los controles técnicos y de gobernanza necesarios para solicitar la firma del instalador de Windows mediante SignPath Foundation.
 
 - Repositorio: https://github.com/andminin-engineering/open-job-hunter
-- Descarga beta: `[REPLACE_WITH_RELEASE_URL]`
+- Descarga beta: https://github.com/andminin-engineering/open-job-hunter/releases/tag/v1.2.0
 - Guía de prueba: https://github.com/andminin-engineering/open-job-hunter/blob/main/docs/BETA_TESTING.md
 - Compartir feedback: https://github.com/andminin-engineering/open-job-hunter/issues/new?template=beta-feedback.yml
 

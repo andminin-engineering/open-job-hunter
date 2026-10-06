@@ -8,7 +8,7 @@ This checklist does not authorize a release. The human owner must explicitly app
 - [ ] Missing Ollama and missing-model states display actionable guidance.
 - [ ] A clean Windows installation completes the flow in `BETA_TESTING.md`.
 - [ ] Installer, portable edition and uninstall/data-removal behavior are verified.
-- [ ] Known limitations are recorded in the release notes.
+- [x] Known limitations are recorded in `RELEASE_NOTES_v1.2.0.md`.
 
 ## Quality and security
 
@@ -31,7 +31,7 @@ This checklist does not authorize a release. The human owner must explicitly app
 - [ ] SHA-256 manifest and CycloneDX SBOM are published beside the executables.
 - [ ] GitHub build-provenance and SBOM attestations verify successfully.
 - [ ] Product name and version metadata match the tag.
-- [ ] Release is marked **Pre-release** and identifies the artifact as unsigned when applicable.
+- [ ] Release `v1.2.0` is published as the approved stable channel and identifies the Windows artifacts as unsigned.
 
 ## Community operations
 
