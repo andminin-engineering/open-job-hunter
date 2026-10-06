@@ -1,6 +1,6 @@
 {
   "name": "open-job-hunter",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "An open-source MCP server that discovers and AI-evaluates job offers against YOUR configurable profile — 100% local, private, and self-hosted.",
   "type": "module",
   "main": "desktop/main.cjs",
