@@ -18,6 +18,7 @@ import {
   type Profile,
 } from "./profile.js";
 import { checkOllama, DEFAULT_OLLAMA_MODEL, generateJson, OllamaUnavailableError } from "./ollama.js";
+import { discoveryHttpError } from "./discovery-errors.js";
 import { stripLegacySchedulerDefaults } from "./scheduler-config.js";
 import { matchesSearchTerm, splitSearchTerms } from "./search.js";
 import {
@@ -618,7 +619,11 @@ async function discoverJobsFromGreenhouse(board: string, company: string | undef
 
   const response = await fetch(url.toString());
   if (!response.ok) {
-    throw new Error(`Greenhouse API respondio con estado ${response.status}`);
+    throw discoveryHttpError(
+      "Greenhouse API",
+      response.status,
+      "Check that the board name in your configuration is correct.",
+    );
   }
 
   const data = (await response.json()) as {
@@ -649,7 +654,11 @@ async function discoverJobsFromLever(company: string, companyLabel: string | und
 
   const response = await fetch(url.toString());
   if (!response.ok) {
-    throw new Error(`Lever API respondio con estado ${response.status}`);
+    throw discoveryHttpError(
+      "Lever API",
+      response.status,
+      "Check that the company identifier in your configuration is correct.",
+    );
   }
 
   const data = (await response.json()) as Array<{
@@ -756,7 +765,11 @@ async function discoverJobsFromRemotive(search: string, limit: number) {
 
     const response = await fetch(url.toString());
     if (!response.ok) {
-      throw new Error(`Remotive API respondio con estado ${response.status}`);
+      throw discoveryHttpError(
+        "Remotive API",
+        response.status,
+        "The endpoint may be unreachable; check your network connectivity.",
+      );
     }
 
     const data = (await response.json()) as { jobs?: RemotiveJob[] };
