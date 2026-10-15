@@ -16,6 +16,6 @@ jobs:
     name: agent-artifact-guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check tracked files
         run: sh .github/scripts/agent-artifact-guard.sh --tracked
